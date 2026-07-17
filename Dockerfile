@@ -14,6 +14,12 @@ RUN dotnet publish src/AiDocAssistant.Web/AiDocAssistant.Web.csproj -c Release -
 
 # --- Стадия запуска ------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
+# OCR-инструменты: tesseract (распознавание, rus+eng) и poppler (растеризация скан-PDF)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tesseract-ocr tesseract-ocr-rus poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=build /app/publish .
 EXPOSE 8080
