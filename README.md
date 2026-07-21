@@ -19,6 +19,19 @@ docker-compose up --build
 
 Для разработки в Visual Studio: поднять только БД (`docker-compose up db`) и запустить проект `AiDocAssistant.Web` (профиль http, порт 5080). Миграции применяются автоматически при старте.
 
+### Конфигурация
+
+API-ключ DeepSeek (в git не попадает):
+
+- локально — user-secrets: `dotnet user-secrets set "DeepSeek:ApiKey" "sk-..." --project src/AiDocAssistant.Web`
+- в Docker — файл `.env` рядом с docker-compose.yml: `DEEPSEEK_API_KEY=sk-...`
+
+Для OCR локально нужны [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (с русским языком) и [poppler](https://github.com/oschwartz10612/poppler-windows/releases) в PATH; в Docker-образе они уже установлены.
+
+### Использование
+
+`POST /api/documents` (multipart, поле `file`) — загрузка PDF или изображения: текст извлекается (при необходимости OCR), LLM возвращает структурированные поля (номер, дата, контрагент, позиции, суммы) с confidence. `GET /api/documents` — список, `GET /api/documents/{id}` — детали с JSON извлечения. Всё видно в Swagger.
+
 ## Структура
 
 ```
@@ -35,7 +48,7 @@ tests/
 ## Статус (фазы)
 
 - [x] Фаза 0 — каркас: solution, Docker (Postgres+pgvector), миграции, health-check, Swagger
-- [ ] Фаза 1 — загрузка документов и structured extraction
+- [x] Фаза 1 — загрузка документов (PDF/сканы, OCR) и structured extraction через LLM
 - [ ] Фаза 2 — RAG: эмбеддинги, векторный поиск, чат с цитатами
 - [ ] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт)
 - [ ] Фаза 4 — evals, метрики точности/стоимости/latency

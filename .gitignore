@@ -18,8 +18,12 @@ TestResults/
 *.trx
 
 # User secrets & env
+.env
 *.env
 appsettings.*.Local.json
+
+# Локальное файловое хранилище
+uploads/
 
 # OS
 Thumbs.db

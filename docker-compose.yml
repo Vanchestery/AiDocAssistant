@@ -23,11 +23,17 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__Default: "Host=db;Port=5432;Database=aidoc;Username=aidoc;Password=aidoc_dev_password"
+      Storage__Root: /app/uploads
+      # Ключ берётся из .env-файла рядом с compose (в git не попадает)
+      DeepSeek__ApiKey: ${DEEPSEEK_API_KEY:-}
     ports:
       - "8080:8080"
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   pgdata:
+  uploads:

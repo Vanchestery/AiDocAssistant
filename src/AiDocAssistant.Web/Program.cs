@@ -1,4 +1,9 @@
+using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Services;
+using AiDocAssistant.Infrastructure.Llm;
+using AiDocAssistant.Infrastructure.Parsing;
 using AiDocAssistant.Infrastructure.Persistence;
+using AiDocAssistant.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +15,21 @@ builder.Services.AddControllers();
 // PostgreSQL + pgvector через EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+// Конфигурация
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+builder.Services.Configure<DeepSeekOptions>(builder.Configuration.GetSection(DeepSeekOptions.SectionName));
+
+// Файлы и парсинг
+builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
+builder.Services.AddSingleton<OcrCli>();
+builder.Services.AddScoped<IDocumentParser, PdfDocumentParser>();
+builder.Services.AddScoped<IDocumentParser, ImageDocumentParser>();
+builder.Services.AddScoped<CompositeDocumentParser>();
+
+// LLM: DeepSeek за интерфейсом ILlmProvider (model-agnostic)
+builder.Services.AddHttpClient<ILlmProvider, DeepSeekLlmProvider>();
+builder.Services.AddScoped<DocumentExtractionService>();
 
 // Health-check: проверяет и сам сервис, и доступность БД
 builder.Services.AddHealthChecks()
