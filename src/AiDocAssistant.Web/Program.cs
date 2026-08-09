@@ -5,6 +5,7 @@ using AiDocAssistant.Infrastructure.Parsing;
 using AiDocAssistant.Infrastructure.Persistence;
 using AiDocAssistant.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,13 +13,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// PostgreSQL + pgvector через EF Core
+// PostgreSQL + pgvector через EF Core (UseVector регистрирует тип Vector)
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("Default"),
+        npgsql => npgsql.UseVector()));
 
 // Конфигурация
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.Configure<DeepSeekOptions>(builder.Configuration.GetSection(DeepSeekOptions.SectionName));
+builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
+builder.Services.Configure<RagOptions>(builder.Configuration.GetSection(RagOptions.SectionName));
+builder.Services.AddSingleton(sp =>
+{
+    var options = new RagOptions();
+    builder.Configuration.GetSection(RagOptions.SectionName).Bind(options);
+    return options;
+});
 
 // Файлы и парсинг
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
@@ -30,6 +41,16 @@ builder.Services.AddScoped<CompositeDocumentParser>();
 // LLM: DeepSeek за интерфейсом ILlmProvider (model-agnostic)
 builder.Services.AddHttpClient<ILlmProvider, DeepSeekLlmProvider>();
 builder.Services.AddScoped<DocumentExtractionService>();
+
+// RAG-индексация: чанкер + эмбеддер + хранилище на pgvector
+builder.Services.AddSingleton<ITextChunker, RecursiveTextChunker>();
+builder.Services.AddHttpClient<IEmbeddingProvider, OpenAiCompatibleEmbeddingProvider>();
+builder.Services.AddScoped<IChunkStore, PgVectorChunkStore>();
+builder.Services.AddScoped<DocumentIndexingService>();
+
+// RAG-чат: сессии + ответ с цитатами
+builder.Services.AddScoped<IChatSessionStore, EfChatSessionStore>();
+builder.Services.AddScoped<RagChatService>();
 
 // Health-check: проверяет и сам сервис, и доступность БД
 builder.Services.AddHealthChecks()

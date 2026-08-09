@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Тип Vector для эмбеддинга в сущности Chunk. Пакет крошечный (только value-тип),
+         EF-интеграция (Pgvector.EntityFrameworkCore) остаётся в Infrastructure. -->
+    <PackageReference Include="Pgvector" Version="0.3.0" />
+  </ItemGroup>
+
 </Project>

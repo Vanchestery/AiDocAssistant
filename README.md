@@ -28,9 +28,15 @@ API-ключ DeepSeek (в git не попадает):
 
 Для OCR локально нужны [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (с русским языком) и [poppler](https://github.com/oschwartz10612/poppler-windows/releases) в PATH; в Docker-образе они уже установлены.
 
+В Docker Ollama должна быть запущена **на хосте**; в `docker-compose.yml` для API задано `Embedding__BaseUrl=http://host.docker.internal:11434`.
+
 ### Использование
 
-`POST /api/documents` (multipart, поле `file`) — загрузка PDF или изображения: текст извлекается (при необходимости OCR), LLM возвращает структурированные поля (номер, дата, контрагент, позиции, суммы) с confidence. `GET /api/documents` — список, `GET /api/documents/{id}` — детали с JSON извлечения. Всё видно в Swagger.
+`POST /api/documents` (multipart, поле `file`) — загрузка PDF или изображения: текст извлекается (при необходимости OCR), LLM возвращает структурированные поля (номер, дата, контрагент, позиции, суммы) с confidence. `GET /api/documents` — список, `GET /api/documents/{id}` — детали с JSON извлечения.
+
+**RAG-чат:** `POST /api/chat/sessions` — новая сессия; `POST /api/chat/sessions/{id}/messages` — вопрос (JSON: `{ "question": "...", "documentId": null }`); в ответе — текст ассистента и массив **citations** (какие документы/фрагменты использованы). `GET /api/chat/sessions/{id}` — история диалога. Перед чатом документ должен быть загружен и проиндексирован (нужна Ollama с `bge-m3`).
+
+Всё видно в Swagger.
 
 ## Структура
 
