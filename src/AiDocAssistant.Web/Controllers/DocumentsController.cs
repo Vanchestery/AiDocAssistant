@@ -16,6 +16,7 @@ public class DocumentsController : ControllerBase
     private readonly IFileStorage _storage;
     private readonly CompositeDocumentParser _parser;
     private readonly DocumentExtractionService _extraction;
+    private readonly DocumentIndexingService _indexing;
     private readonly ILogger<DocumentsController> _logger;
 
     public DocumentsController(
@@ -23,12 +24,14 @@ public class DocumentsController : ControllerBase
         IFileStorage storage,
         CompositeDocumentParser parser,
         DocumentExtractionService extraction,
+        DocumentIndexingService indexing,
         ILogger<DocumentsController> logger)
     {
         _db = db;
         _storage = storage;
         _parser = parser;
         _extraction = extraction;
+        _indexing = indexing;
         _logger = logger;
     }
 
@@ -86,6 +89,18 @@ public class DocumentsController : ControllerBase
             });
             document.Status = DocumentStatus.Extracted;
             await _db.SaveChangesAsync(ct);
+
+            // RAG-индексация: best-effort. Если эмбеддер недоступен (Ollama не запущена),
+            // не роняем загрузку — извлечение уже сохранено, индекс дособерём переиндексацией.
+            try
+            {
+                var indexed = await _indexing.IndexAsync(document.Id, parsed.Text, ct);
+                _logger.LogInformation("Документ {Id}: проиндексировано чанков — {Count}", document.Id, indexed);
+            }
+            catch (Exception ie) when (ie is not OperationCanceledException)
+            {
+                _logger.LogWarning(ie, "Индексация документа {Id} не удалась (эмбеддер недоступен?)", document.Id);
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
