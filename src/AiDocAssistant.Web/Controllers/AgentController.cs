@@ -1,5 +1,8 @@
+using System.Text.Json;
+using AiDocAssistant.Core.Abstractions;
 using AiDocAssistant.Core.Entities;
 using AiDocAssistant.Core.Services;
+using AiDocAssistant.Infrastructure.Agent;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AiDocAssistant.Web.Controllers;
@@ -10,11 +13,13 @@ public class AgentController : ControllerBase
 {
     private readonly AgentTaskService _tasks;
     private readonly AgentToolRegistry _tools;
+    private readonly IFileStorage _storage;
 
-    public AgentController(AgentTaskService tasks, AgentToolRegistry tools)
+    public AgentController(AgentTaskService tasks, AgentToolRegistry tools, IFileStorage storage)
     {
         _tasks = tasks;
         _tools = tools;
+        _storage = storage;
     }
 
     /// <summary>Доступные tools (явный режим Фазы 3).</summary>
@@ -62,6 +67,45 @@ public class AgentController : ControllerBase
     {
         var action = await _tasks.GetAsync(id, ct);
         return action is null ? NotFound() : AgentTaskDto.FromEntity(action);
+    }
+
+    /// <summary>Скачать xlsx-отчёт задачи generate_report.</summary>
+    [HttpGet("tasks/{id:guid}/report")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadReport(Guid id, CancellationToken ct)
+    {
+        var action = await _tasks.GetAsync(id, ct);
+        if (action is null
+            || action.Tool != AgentToolNames.GenerateReport
+            || action.Status != AgentActionStatus.Completed
+            || string.IsNullOrWhiteSpace(action.ResultJson))
+        {
+            return NotFound();
+        }
+
+        using var doc = JsonDocument.Parse(action.ResultJson);
+        var root = doc.RootElement;
+
+        if (!root.TryGetProperty("storagePath", out var pathEl)
+            || !root.TryGetProperty("fileName", out var nameEl))
+        {
+            return NotFound();
+        }
+
+        var storagePath = pathEl.GetString();
+        if (string.IsNullOrWhiteSpace(storagePath))
+            return NotFound();
+
+        var fullPath = _storage.GetFullPath(storagePath);
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound();
+
+        var fileName = nameEl.GetString() ?? "report.xlsx";
+        return PhysicalFile(
+            fullPath,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
     }
 }
 

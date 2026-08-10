@@ -175,3 +175,11 @@
 **Почему не RAG/PDF:** для сводки нужны уже извлечённые поля (сумма, контрагент, дата) — они есть в JSON; RAG добавляет шум и стоимость; шаблон без LLM не гибок для формулировок «на русском, по делу».
 
 **Выбрали:** `DocumentSummarizeService` собирает **компактный текст** из JSON каждого документа (без items целиком — только count), один вызов `ILlmProvider`. Результат: `summary` + метаданные (documentCount, totalAmountSum) в `resultJson`. Reconcile остаётся детерминированным; summarize — первый tool с LLM в агенте.
+
+### 22. Tool generate_report: xlsx из JSON, два листа, без LLM
+
+**Развилка:** что класть в отчёт и как отдавать файл.
+
+**Варианты:** CSV (проще) · **xlsx два листа** (документы + позиции) · PDF · base64 в JSON.
+
+**Выбрали:** `DocumentReportService` + `DocumentReportXlsxWriter` (ClosedXML). Лист «Документы» — ключевые поля extraction; лист «Позиции» — строки items. Файл сохраняется в `IFileStorage`, скачивание — `GET /api/agent/tasks/{id}/report`. Детерминированно, без LLM; источник — тот же `ExtractionResult.Json`.
