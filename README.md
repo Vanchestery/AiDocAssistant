@@ -36,6 +36,8 @@ API-ключ DeepSeek (в git не попадает):
 
 **RAG-чат:** `POST /api/chat/sessions` — новая сессия; `POST /api/chat/sessions/{id}/messages` — вопрос (JSON: `{ "question": "...", "documentId": null }`); в ответе — текст ассистента и массив **citations** (какие документы/фрагменты использованы). `GET /api/chat/sessions/{id}` — история диалога. Перед чатом документ должен быть загружен и проиндексирован (нужна Ollama с `bge-m3`).
 
+**Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — явный tool (`reconcile` / `summarize` / `generate_report` + `documentIds`); `POST /api/agent/goals` — `{ "goal": "сверь счета...", "documentIds": [...] }` (LLM выбирает tool); `GET /api/agent/tasks/{id}` — результат; `GET /api/agent/tasks/{id}/report` — xlsx после `generate_report`.
+
 Всё видно в Swagger.
 
 ## Структура
@@ -55,8 +57,8 @@ tests/
 
 - [x] Фаза 0 — каркас: solution, Docker (Postgres+pgvector), миграции, health-check, Swagger
 - [x] Фаза 1 — загрузка документов (PDF/сканы, OCR) и structured extraction через LLM
-- [ ] Фаза 2 — RAG: эмбеддинги, векторный поиск, чат с цитатами
-- [ ] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт)
+- [x] Фаза 2 — RAG: эмбеддинги, векторный поиск, чат с цитатами
+- [x] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт, goal-mode)
 - [ ] Фаза 4 — evals, метрики точности/стоимости/latency
 - [ ] Фаза 5 — frontend (Blazor) и деплой
 - [ ] Фаза 6 — MCP-сервер

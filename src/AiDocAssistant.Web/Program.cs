@@ -1,8 +1,10 @@
 using AiDocAssistant.Core.Abstractions;
 using AiDocAssistant.Core.Services;
+using AiDocAssistant.Infrastructure.Agent;
 using AiDocAssistant.Infrastructure.Llm;
 using AiDocAssistant.Infrastructure.Parsing;
 using AiDocAssistant.Infrastructure.Persistence;
+using AiDocAssistant.Infrastructure.Reports;
 using AiDocAssistant.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
@@ -51,6 +53,20 @@ builder.Services.AddScoped<DocumentIndexingService>();
 // RAG-чат: сессии + ответ с цитатами
 builder.Services.AddScoped<IChatSessionStore, EfChatSessionStore>();
 builder.Services.AddScoped<RagChatService>();
+
+// Фаза 3: agent tools
+builder.Services.AddSingleton<DocumentReconcileService>();
+builder.Services.AddSingleton<DocumentReportService>();
+builder.Services.AddSingleton<DocumentReportXlsxWriter>();
+builder.Services.AddScoped<DocumentSummarizeService>();
+builder.Services.AddScoped<IAgentTaskStore, EfAgentTaskStore>();
+builder.Services.AddScoped<IAgentTool, ReconcileAgentTool>();
+builder.Services.AddScoped<IAgentTool, SummarizeAgentTool>();
+builder.Services.AddScoped<IAgentTool, GenerateReportAgentTool>();
+builder.Services.AddScoped<AgentToolRegistry>();
+builder.Services.AddScoped<AgentGoalRouterService>();
+builder.Services.AddScoped<AgentGoalService>();
+builder.Services.AddScoped<AgentTaskService>();
 
 // Health-check: проверяет и сам сервис, и доступность БД
 builder.Services.AddHealthChecks()

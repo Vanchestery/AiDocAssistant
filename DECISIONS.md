@@ -135,3 +135,61 @@
 **Варианты:** только глобальный поиск · только per-document · оба режима через параметр запроса.
 
 **Выбрали оба:** по умолчанию top-K по всем `Chunks` (вопросы вроде «сколько всего за март?»); опциональный `documentId` в теле запроса — «только этот PDF». Фильтр на уровне SQL до OrderBy, индекс HNSW по-прежнему используется.
+
+## Фаза 3 — agent tool-use
+
+### 18. API агента: сначала явный tool, потом goal
+
+**Развилка:** как клиент вызывает агента.
+
+**Варианты:** только `{ tool, documentIds }` · только `{ goal: "сверь..." }` · оба режима.
+
+**Почему не сразу goal:** tool calling DeepSeek нужно обкатать; reconcile — детерминированный C# по JSON, явный API проще тестировать и дебажить; goal-оркестратор добавим вторым шагом той же фазы.
+
+**Выбрали явный tool** (`POST /api/agent/tasks`). Реестр `IAgentTool` + `AgentToolRegistry`. Goal → LLM выбирает tool — позже.
+
+### 19. Отчёт generate_report: xlsx (ClosedXML)
+
+**Развилка:** формат отчёта.
+
+**Варианты:** CSV · xlsx · PDF.
+
+**Выбрали xlsx** — ближе к бэк-офису и ТЗ; CSV — fallback; PDF — «что дальше». Реализация tool — следующий коммит после summarize.
+
+### 20. Данные для tools и порядок: ExtractionResult, reconcile первым
+
+**Развилка:** откуда tools читают данные и с чего начать.
+
+**Варианты:** повторный парсинг PDF · JSON из ExtractionResult · RAG-чанки.
+
+**Выбрали ExtractionResult.Json** — уже структурировано, без LLM/OCR. RAG — для поиска, не для сверки цифр.
+
+**Порядок:** каркас (`AgentAction`, `AgentTaskService`) + **reconcile** → summarize → generate_report.
+
+### 21. Tool summarize: компактные поля + LLM, не полный PDF
+
+**Развилка:** как собрать сводку по нескольким документам.
+
+**Варианты:** RAG по чанкам · повторный парсинг PDF · **структурированный JSON** из ExtractionResult → LLM · шаблон без LLM (string.Format).
+
+**Почему не RAG/PDF:** для сводки нужны уже извлечённые поля (сумма, контрагент, дата) — они есть в JSON; RAG добавляет шум и стоимость; шаблон без LLM не гибок для формулировок «на русском, по делу».
+
+**Выбрали:** `DocumentSummarizeService` собирает **компактный текст** из JSON каждого документа (без items целиком — только count), один вызов `ILlmProvider`. Результат: `summary` + метаданные (documentCount, totalAmountSum) в `resultJson`. Reconcile остаётся детерминированным; summarize — первый tool с LLM в агенте.
+
+### 22. Tool generate_report: xlsx из JSON, два листа, без LLM
+
+**Развилка:** что класть в отчёт и как отдавать файл.
+
+**Варианты:** CSV (проще) · **xlsx два листа** (документы + позиции) · PDF · base64 в JSON.
+
+**Выбрали:** `DocumentReportService` + `DocumentReportXlsxWriter` (ClosedXML). Лист «Документы» — ключевые поля extraction; лист «Позиции» — строки items. Файл сохраняется в `IFileStorage`, скачивание — `GET /api/agent/tasks/{id}/report`. Детерминированно, без LLM; источник — тот же `ExtractionResult.Json`.
+
+### 23. Goal-mode: JSON-router, не native tool-calling
+
+**Развилка:** как LLM выбирает tool по цели пользователя.
+
+**Варианты:** native OpenAI tool/function calling · **JSON-mode router** (один вызов → `{ tool, reasoning }`) · keyword-эвристики без LLM.
+
+**Почему не native tool-calling сразу:** `ILlmProvider` уже покрывает chat + JSON-mode; для трёх tools достаточно одного вызова-маршрутизатора; проще тестировать (FakeLlm с JSON). Native tools — при multi-step цикле (несколько tools подряд).
+
+**Выбрали:** `POST /api/agent/goals` `{ goal, documentIds }` → `AgentGoalRouterService` → `AgentTaskService.RunAsync`. В `inputJson` задачи сохраняются `goal` и `routingReason`. Явный `POST /api/agent/tasks` остаётся для тестов и отладки.
