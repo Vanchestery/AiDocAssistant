@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Agent;
 using AiDocAssistant.Core.Entities;
 using AiDocAssistant.Core.Services;
 using AiDocAssistant.Infrastructure.Persistence;
@@ -83,12 +84,4 @@ public sealed class ReconcileAgentTool : IAgentTool
             JsonSerializer.Serialize(payload, JsonOpts),
             outcome.Summary);
     }
-}
-
-/// <summary>Имена tools — единый источник для API и регистрации.</summary>
-public static class AgentToolNames
-{
-    public const string Reconcile = "reconcile";
-    public const string Summarize = "summarize";
-    public const string GenerateReport = "generate_report";
 }

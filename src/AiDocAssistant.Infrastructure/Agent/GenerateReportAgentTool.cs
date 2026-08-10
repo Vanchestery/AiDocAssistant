@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AiDocAssistant.Core.Abstractions;
-using AiDocAssistant.Core.Entities;
-using AiDocAssistant.Core.Services;
+using AiDocAssistant.Core.Agent;
+using AiDocAssistant.Core.Entities;using AiDocAssistant.Core.Services;
 using AiDocAssistant.Infrastructure.Persistence;
 using AiDocAssistant.Infrastructure.Reports;
 using Microsoft.EntityFrameworkCore;

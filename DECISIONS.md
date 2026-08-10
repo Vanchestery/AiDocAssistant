@@ -183,3 +183,13 @@
 **Варианты:** CSV (проще) · **xlsx два листа** (документы + позиции) · PDF · base64 в JSON.
 
 **Выбрали:** `DocumentReportService` + `DocumentReportXlsxWriter` (ClosedXML). Лист «Документы» — ключевые поля extraction; лист «Позиции» — строки items. Файл сохраняется в `IFileStorage`, скачивание — `GET /api/agent/tasks/{id}/report`. Детерминированно, без LLM; источник — тот же `ExtractionResult.Json`.
+
+### 23. Goal-mode: JSON-router, не native tool-calling
+
+**Развилка:** как LLM выбирает tool по цели пользователя.
+
+**Варианты:** native OpenAI tool/function calling · **JSON-mode router** (один вызов → `{ tool, reasoning }`) · keyword-эвристики без LLM.
+
+**Почему не native tool-calling сразу:** `ILlmProvider` уже покрывает chat + JSON-mode; для трёх tools достаточно одного вызова-маршрутизатора; проще тестировать (FakeLlm с JSON). Native tools — при multi-step цикле (несколько tools подряд).
+
+**Выбрали:** `POST /api/agent/goals` `{ goal, documentIds }` → `AgentGoalRouterService` → `AgentTaskService.RunAsync`. В `inputJson` задачи сохраняются `goal` и `routingReason`. Явный `POST /api/agent/tasks` остаётся для тестов и отладки.

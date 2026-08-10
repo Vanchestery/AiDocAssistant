@@ -64,6 +64,8 @@ builder.Services.AddScoped<IAgentTool, ReconcileAgentTool>();
 builder.Services.AddScoped<IAgentTool, SummarizeAgentTool>();
 builder.Services.AddScoped<IAgentTool, GenerateReportAgentTool>();
 builder.Services.AddScoped<AgentToolRegistry>();
+builder.Services.AddScoped<AgentGoalRouterService>();
+builder.Services.AddScoped<AgentGoalService>();
 builder.Services.AddScoped<AgentTaskService>();
 
 // Health-check: проверяет и сам сервис, и доступность БД

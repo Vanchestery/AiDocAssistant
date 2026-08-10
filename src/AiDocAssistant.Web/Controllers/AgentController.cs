@@ -1,8 +1,8 @@
 using System.Text.Json;
 using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Agent;
 using AiDocAssistant.Core.Entities;
 using AiDocAssistant.Core.Services;
-using AiDocAssistant.Infrastructure.Agent;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AiDocAssistant.Web.Controllers;
@@ -12,12 +12,18 @@ namespace AiDocAssistant.Web.Controllers;
 public class AgentController : ControllerBase
 {
     private readonly AgentTaskService _tasks;
+    private readonly AgentGoalService _goals;
     private readonly AgentToolRegistry _tools;
     private readonly IFileStorage _storage;
 
-    public AgentController(AgentTaskService tasks, AgentToolRegistry tools, IFileStorage storage)
+    public AgentController(
+        AgentTaskService tasks,
+        AgentGoalService goals,
+        AgentToolRegistry tools,
+        IFileStorage storage)
     {
         _tasks = tasks;
+        _goals = goals;
         _tools = tools;
         _storage = storage;
     }
@@ -55,6 +61,43 @@ public class AgentController : ControllerBase
             return BadRequest(e.Message);
         }
         catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+
+    /// <summary>Goal-mode: LLM выбирает tool, затем выполняется задача.</summary>
+    [HttpPost("goals")]
+    [ProducesResponseType(typeof(AgentGoalDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(AgentGoalDto), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AgentGoalDto>> RunGoal(
+        [FromBody] RunAgentGoalRequest request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Goal))
+            return BadRequest("Укажите goal — что нужно сделать с документами.");
+
+        if (request.DocumentIds is null || request.DocumentIds.Count == 0)
+            return BadRequest("Укажите documentIds.");
+
+        try
+        {
+            var outcome = await _goals.RunAsync(request.Goal, request.DocumentIds, ct);
+            var dto = AgentGoalDto.FromOutcome(outcome);
+            return outcome.Action.Status == AgentActionStatus.Failed
+                ? UnprocessableEntity(dto)
+                : CreatedAtAction(nameof(GetTask), new { id = outcome.Action.Id }, dto);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (InvalidOperationException e)
         {
             return BadRequest(e.Message);
         }
@@ -110,6 +153,28 @@ public class AgentController : ControllerBase
 }
 
 public record RunAgentTaskRequest(string Tool, IReadOnlyList<Guid> DocumentIds);
+
+public record RunAgentGoalRequest(string Goal, IReadOnlyList<Guid> DocumentIds);
+
+public record AgentGoalDto(
+    string Goal,
+    string SelectedTool,
+    string RoutingReason,
+    string RoutingModel,
+    int RoutingPromptTokens,
+    int RoutingCompletionTokens,
+    AgentTaskDto Task)
+{
+    public static AgentGoalDto FromOutcome(AgentGoalOutcome outcome) =>
+        new(
+            outcome.Goal,
+            outcome.Routing.Tool,
+            outcome.Routing.Reasoning,
+            outcome.Routing.Model,
+            outcome.Routing.PromptTokens,
+            outcome.Routing.CompletionTokens,
+            AgentTaskDto.FromEntity(outcome.Action));
+}
 
 public record AgentTaskDto(
     Guid Id,

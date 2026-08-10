@@ -22,9 +22,16 @@ public sealed class AgentTaskService
         _tools = tools;
     }
 
+    public Task<AgentAction> RunAsync(
+        string tool,
+        IReadOnlyList<Guid> documentIds,
+        CancellationToken ct = default) =>
+        RunAsync(tool, documentIds, context: null, ct);
+
     public async Task<AgentAction> RunAsync(
         string tool,
         IReadOnlyList<Guid> documentIds,
+        AgentTaskRunContext? context,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(tool))
@@ -33,7 +40,14 @@ public sealed class AgentTaskService
         if (documentIds.Count == 0)
             throw new ArgumentException("Нужен хотя бы один documentId.", nameof(documentIds));
 
-        var inputJson = JsonSerializer.Serialize(new { documentIds }, JsonOpts);
+        var inputJson = context is null
+            ? JsonSerializer.Serialize(new { documentIds }, JsonOpts)
+            : JsonSerializer.Serialize(new
+            {
+                documentIds,
+                goal = context.Goal,
+                routingReason = context.RoutingReason
+            }, JsonOpts);
         var action = await _store.CreateAsync(tool.Trim(), inputJson, ct);
 
         action.Status = AgentActionStatus.Running;
