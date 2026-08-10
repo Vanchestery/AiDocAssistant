@@ -165,3 +165,13 @@
 **Выбрали ExtractionResult.Json** — уже структурировано, без LLM/OCR. RAG — для поиска, не для сверки цифр.
 
 **Порядок:** каркас (`AgentAction`, `AgentTaskService`) + **reconcile** → summarize → generate_report.
+
+### 21. Tool summarize: компактные поля + LLM, не полный PDF
+
+**Развилка:** как собрать сводку по нескольким документам.
+
+**Варианты:** RAG по чанкам · повторный парсинг PDF · **структурированный JSON** из ExtractionResult → LLM · шаблон без LLM (string.Format).
+
+**Почему не RAG/PDF:** для сводки нужны уже извлечённые поля (сумма, контрагент, дата) — они есть в JSON; RAG добавляет шум и стоимость; шаблон без LLM не гибок для формулировок «на русском, по делу».
+
+**Выбрали:** `DocumentSummarizeService` собирает **компактный текст** из JSON каждого документа (без items целиком — только count), один вызов `ILlmProvider`. Результат: `summary` + метаданные (documentCount, totalAmountSum) в `resultJson`. Reconcile остаётся детерминированным; summarize — первый tool с LLM в агенте.

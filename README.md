@@ -36,7 +36,7 @@ API-ключ DeepSeek (в git не попадает):
 
 **RAG-чат:** `POST /api/chat/sessions` — новая сессия; `POST /api/chat/sessions/{id}/messages` — вопрос (JSON: `{ "question": "...", "documentId": null }`); в ответе — текст ассистента и массив **citations** (какие документы/фрагменты использованы). `GET /api/chat/sessions/{id}` — история диалога. Перед чатом документ должен быть загружен и проиндексирован (нужна Ollama с `bge-m3`).
 
-**Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — `{ "tool": "reconcile", "documentIds": ["...", "..."] }` (минимум 2 документа с extraction); `GET /api/agent/tasks/{id}` — результат сверки.
+**Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — `{ "tool": "reconcile", "documentIds": ["...", "..."] }` (минимум 2 документа) или `{ "tool": "summarize", "documentIds": ["..."] }` (минимум 1); `GET /api/agent/tasks/{id}` — результат.
 
 Всё видно в Swagger.
 
