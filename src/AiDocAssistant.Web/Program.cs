@@ -1,5 +1,6 @@
 using AiDocAssistant.Core.Abstractions;
 using AiDocAssistant.Core.Services;
+using AiDocAssistant.Infrastructure.Agent;
 using AiDocAssistant.Infrastructure.Llm;
 using AiDocAssistant.Infrastructure.Parsing;
 using AiDocAssistant.Infrastructure.Persistence;
@@ -51,6 +52,13 @@ builder.Services.AddScoped<DocumentIndexingService>();
 // RAG-чат: сессии + ответ с цитатами
 builder.Services.AddScoped<IChatSessionStore, EfChatSessionStore>();
 builder.Services.AddScoped<RagChatService>();
+
+// Фаза 3: agent tools
+builder.Services.AddSingleton<DocumentReconcileService>();
+builder.Services.AddScoped<IAgentTaskStore, EfAgentTaskStore>();
+builder.Services.AddScoped<IAgentTool, ReconcileAgentTool>();
+builder.Services.AddScoped<AgentToolRegistry>();
+builder.Services.AddScoped<AgentTaskService>();
 
 // Health-check: проверяет и сам сервис, и доступность БД
 builder.Services.AddHealthChecks()

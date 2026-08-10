@@ -135,3 +135,33 @@
 **Варианты:** только глобальный поиск · только per-document · оба режима через параметр запроса.
 
 **Выбрали оба:** по умолчанию top-K по всем `Chunks` (вопросы вроде «сколько всего за март?»); опциональный `documentId` в теле запроса — «только этот PDF». Фильтр на уровне SQL до OrderBy, индекс HNSW по-прежнему используется.
+
+## Фаза 3 — agent tool-use
+
+### 18. API агента: сначала явный tool, потом goal
+
+**Развилка:** как клиент вызывает агента.
+
+**Варианты:** только `{ tool, documentIds }` · только `{ goal: "сверь..." }` · оба режима.
+
+**Почему не сразу goal:** tool calling DeepSeek нужно обкатать; reconcile — детерминированный C# по JSON, явный API проще тестировать и дебажить; goal-оркестратор добавим вторым шагом той же фазы.
+
+**Выбрали явный tool** (`POST /api/agent/tasks`). Реестр `IAgentTool` + `AgentToolRegistry`. Goal → LLM выбирает tool — позже.
+
+### 19. Отчёт generate_report: xlsx (ClosedXML)
+
+**Развилка:** формат отчёта.
+
+**Варианты:** CSV · xlsx · PDF.
+
+**Выбрали xlsx** — ближе к бэк-офису и ТЗ; CSV — fallback; PDF — «что дальше». Реализация tool — следующий коммит после summarize.
+
+### 20. Данные для tools и порядок: ExtractionResult, reconcile первым
+
+**Развилка:** откуда tools читают данные и с чего начать.
+
+**Варианты:** повторный парсинг PDF · JSON из ExtractionResult · RAG-чанки.
+
+**Выбрали ExtractionResult.Json** — уже структурировано, без LLM/OCR. RAG — для поиска, не для сверки цифр.
+
+**Порядок:** каркас (`AgentAction`, `AgentTaskService`) + **reconcile** → summarize → generate_report.
