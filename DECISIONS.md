@@ -193,3 +193,21 @@
 **Почему не native tool-calling сразу:** `ILlmProvider` уже покрывает chat + JSON-mode; для трёх tools достаточно одного вызова-маршрутизатора; проще тестировать (FakeLlm с JSON). Native tools — при multi-step цикле (несколько tools подряд).
 
 **Выбрали:** `POST /api/agent/goals` `{ goal, documentIds }` → `AgentGoalRouterService` → `AgentTaskService.RunAsync`. В `inputJson` задачи сохраняются `goal` и `routingReason`. Явный `POST /api/agent/tasks` остаётся для тестов и отладки.
+
+## Фаза 4 — evals и метрики
+
+### 24. Телеметрия LLM: декоратор + Postgres, не только логи
+
+**Развилка:** где хранить токены/latency/стоимость.
+
+**Варианты:** только `ILogger` · Prometheus/OpenTelemetry · **таблица `LlmUsageEvents` + API**.
+
+**Выбрали:** `MeteringLlmProvider` — декоратор вокруг `DeepSeekLlmProvider`; каждый вызов с `LlmRequest.Operation` (`extraction`, `rag_chat`, `summarize`, `goal_router`). Стоимость — `LlmCostEstimator` по конфигурируемым USD/1M tokens. `GET /api/metrics/summary` — агрегаты + счётчики БД.
+
+### 25. Evals v1: детерминированные кейсы без LLM в CI
+
+**Развилка:** с чего начать evals при отсутствии golden LLM-run в CI.
+
+**Варианты:** end-to-end с live LLM · offline golden JSON · **детерминированная логика + fixture JSON**.
+
+**Выбрали:** `EvalSuiteService` — reconcile (match/mismatch) + проверка ключевых полей extraction JSON (invoice A/B). `GET /api/metrics/evals` и блок evals в summary. LLM-accuracy evals — следующий шаг (offline fixtures или recorded responses).

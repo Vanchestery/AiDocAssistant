@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Llm;
 
 namespace AiDocAssistant.Core.Services;
 
@@ -59,7 +60,7 @@ public class DocumentExtractionService
         };
 
         var completion = await _llm.CompleteAsync(
-            new LlmRequest(messages, JsonMode: true, Temperature: 0.1), ct);
+            new LlmRequest(messages, JsonMode: true, Temperature: 0.1, Operation: LlmOperations.Extraction), ct);
 
         var (json, error) = TryValidate(completion.Content);
         var totalPrompt = completion.PromptTokens;
@@ -73,7 +74,7 @@ public class DocumentExtractionService
                 $"Твой json не прошёл валидацию: {error}. Верни исправленный json-объект строго по схеме."));
 
             completion = await _llm.CompleteAsync(
-                new LlmRequest(messages, JsonMode: true, Temperature: 0.1), ct);
+                new LlmRequest(messages, JsonMode: true, Temperature: 0.1, Operation: LlmOperations.Extraction), ct);
 
             totalPrompt += completion.PromptTokens;
             totalCompletion += completion.CompletionTokens;

@@ -40,8 +40,16 @@ builder.Services.AddScoped<IDocumentParser, PdfDocumentParser>();
 builder.Services.AddScoped<IDocumentParser, ImageDocumentParser>();
 builder.Services.AddScoped<CompositeDocumentParser>();
 
-// LLM: DeepSeek за интерфейсом ILlmProvider (model-agnostic)
-builder.Services.AddHttpClient<ILlmProvider, DeepSeekLlmProvider>();
+// LLM: DeepSeek за интерфейсом ILlmProvider (model-agnostic) + телеметрия Фазы 4
+builder.Services.Configure<LlmPricingOptions>(builder.Configuration.GetSection(LlmPricingOptions.SectionName));
+builder.Services.AddSingleton<LlmCostEstimator>(sp =>
+    new LlmCostEstimator(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<LlmPricingOptions>>().Value));
+builder.Services.AddHttpClient<DeepSeekLlmProvider>();
+builder.Services.AddScoped<ILlmUsageStore, EfLlmUsageStore>();
+builder.Services.AddScoped<ILlmProvider>(sp => new MeteringLlmProvider(
+    sp.GetRequiredService<DeepSeekLlmProvider>(),
+    sp.GetRequiredService<ILlmUsageStore>(),
+    sp.GetRequiredService<LlmCostEstimator>()));
 builder.Services.AddScoped<DocumentExtractionService>();
 
 // RAG-индексация: чанкер + эмбеддер + хранилище на pgvector
@@ -67,6 +75,11 @@ builder.Services.AddScoped<AgentToolRegistry>();
 builder.Services.AddScoped<AgentGoalRouterService>();
 builder.Services.AddScoped<AgentGoalService>();
 builder.Services.AddScoped<AgentTaskService>();
+
+// Фаза 4: метрики и evals
+builder.Services.AddScoped<IDataCountsProvider, EfDataCountsProvider>();
+builder.Services.AddSingleton<EvalSuiteService>();
+builder.Services.AddScoped<MetricsService>();
 
 // Health-check: проверяет и сам сервис, и доступность БД
 builder.Services.AddHealthChecks()

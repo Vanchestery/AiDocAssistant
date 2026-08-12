@@ -20,7 +20,8 @@ public sealed record LlmRequest(
     IReadOnlyList<LlmMessage> Messages,
     bool JsonMode = false,
     double Temperature = 0.2,
-    int? MaxTokens = null);
+    int? MaxTokens = null,
+    string? Operation = null);
 
 /// <summary>Ответ + телеметрия (токены нужны для метрик стоимости, Фаза 4).</summary>
 public sealed record LlmCompletion(
