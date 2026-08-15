@@ -1,0 +1,165 @@
+@page "/metrics"
+@inject MetricsApiClient MetricsApi
+@rendermode InteractiveServer
+
+<PageTitle>Метрики — AiDocAssistant</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1>Метрики</h1>
+        <p class="muted">LLM-телеметрия, счётчики БД и eval-suite.</p>
+    </div>
+    <button class="btn btn-secondary card-btn" type="button" disabled="@_loading" @onclick="ReloadAsync">
+        @(_loading ? "Загрузка…" : "Обновить")
+    </button>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <p class="status error">@_error</p>
+}
+else if (_summary is null)
+{
+    <p class="muted">Загрузка…</p>
+}
+else
+{
+    <section class="metrics-grid">
+        <article class="stat-card">
+            <span class="label">LLM-вызовов</span>
+            <strong>@_summary.Llm.TotalCalls</strong>
+        </article>
+        <article class="stat-card">
+            <span class="label">Токены (prompt / completion)</span>
+            <strong>@_summary.Llm.TotalPromptTokens / @_summary.Llm.TotalCompletionTokens</strong>
+        </article>
+        <article class="stat-card">
+            <span class="label">Оценка стоимости</span>
+            <strong>$@_summary.Llm.TotalEstimatedCostUsd.ToString("0.####")</strong>
+        </article>
+        <article class="stat-card">
+            <span class="label">Latency p50 / p95</span>
+            <strong>@_summary.Llm.LatencyP50Ms / @_summary.Llm.LatencyP95Ms ms</strong>
+        </article>
+    </section>
+
+    <section class="card">
+        <h2>По операциям</h2>
+        @if (_summary.Llm.ByOperation.Count == 0)
+        {
+            <p class="muted">Пока нет LLM-вызовов — загрузите документ или запустите agent.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Operation</th>
+                        <th>Calls</th>
+                        <th>Tokens</th>
+                        <th>p50 / p95</th>
+                        <th>USD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _summary.Llm.ByOperation)
+                    {
+                        <tr>
+                            <td><code>@row.Operation</code></td>
+                            <td>@row.Calls</td>
+                            <td>@row.PromptTokens / @row.CompletionTokens</td>
+                            <td>@row.LatencyP50Ms / @row.LatencyP95Ms ms</td>
+                            <td>$@row.EstimatedCostUsd.ToString("0.####")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Данные в БД</h2>
+        <div class="metrics-grid">
+            <article class="stat-card">
+                <span class="label">Документы</span>
+                <strong>@_summary.Data.Documents</strong>
+                <span class="muted">extracted: @_summary.Data.ExtractedDocuments</span>
+            </article>
+            <article class="stat-card">
+                <span class="label">Chat-сессии</span>
+                <strong>@_summary.Data.ChatSessions</strong>
+            </article>
+            <article class="stat-card">
+                <span class="label">Agent tasks</span>
+                <strong>@_summary.Data.AgentTasks</strong>
+            </article>
+            <article class="stat-card">
+                <span class="label">LlmUsageEvents</span>
+                <strong>@_summary.Data.LlmUsageEvents</strong>
+            </article>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="page-header">
+            <h2>Eval-suite (@_summary.Evals.Cases.Count кейсов)</h2>
+            <span class="badge @(_summary.Evals.AllPassed ? "success" : "danger")">
+                @(_summary.Evals.AllPassed ? "all passed" : "failed")
+            </span>
+        </div>
+        @if (_summary.Evals.GoldenFieldAccuracyPercent is not null)
+        {
+            <p class="muted">Golden field accuracy: @_summary.Evals.GoldenFieldAccuracyPercent.Value.ToString("0.#")%</p>
+        }
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Кейс</th>
+                    <th>Статус</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var evalCase in _summary.Evals.Cases)
+                {
+                    <tr>
+                        <td><code>@evalCase.Name</code></td>
+                        <td>
+                            <span class="badge @(evalCase.Passed ? "success" : "danger")">
+                                @(evalCase.Passed ? "pass" : "fail")
+                            </span>
+                        </td>
+                        <td class="muted">@(evalCase.Detail ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private MetricsSummaryDto? _summary;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _summary = await MetricsApi.GetSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

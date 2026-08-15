@@ -253,3 +253,11 @@
 **Варианты:** три отдельные страницы · wizard · **одна `/agent` с переключателем режима**.
 
 **Выбрали:** `/agent` — чекбоксы документов (Extracted), radio «явный tool / goal»; `AgentApiClient` → `api/agent/tasks|goals`. Результат: status, JSON, ссылка на xlsx для `generate_report`. Ollama не нужна — только DeepSeek.
+
+### 31. Metrics dashboard + prod compose
+
+**Развилка:** как закрыть Фазу 5 (UI + деплой).
+
+**Варианты:** отдельный Grafana · только Swagger · **Blazor `/metrics` + `docker-compose.prod.yml`**.
+
+**Выбрали:** страница `/metrics` — LLM-агрегаты, p50/p95, счётчики БД, таблица 14 eval-кейсов (`MetricsApiClient` → summary). Деплой: `.env.example` + override `docker-compose.prod.yml` (`Production`, `restart: unless-stopped`). Dev-поток (`docker compose up --build`) без изменений.

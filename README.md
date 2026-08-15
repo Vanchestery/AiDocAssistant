@@ -39,9 +39,28 @@ API-ключ DeepSeek (в git не попадает):
 
 **Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — явный tool (`reconcile` / `summarize` / `generate_report` + `documentIds`); `POST /api/agent/goals` — `{ "goal": "сверь счета...", "documentIds": [...] }` (LLM выбирает tool); `GET /api/agent/tasks/{id}` — результат; `GET /api/agent/tasks/{id}/report` — xlsx после `generate_report`. **UI:** `/agent` — выбор документов, явный tool или goal-mode, скачивание отчёта.
 
-**Метрики (Фаза 4):** `GET /api/metrics/summary` — LLM-токены, latency, оценка стоимости, счётчики БД, eval-кейсы; `GET /api/metrics/evals` — только evals.
+**Метрики (Фаза 4):** `GET /api/metrics/summary` — LLM-токены, latency, оценка стоимости, счётчики БД, eval-кейсы; `GET /api/metrics/evals` — только evals. **UI:** `/metrics` — dashboard с eval-suite.
 
-Всё видно в Swagger.
+Всё видно в Swagger и в Blazor UI (`/`, `/documents`, `/chat`, `/agent`, `/metrics`).
+
+## Деплой (Docker)
+
+**Разработка / демо:**
+```bash
+docker compose up --build -d
+```
+
+**Production-override** (переменные окружения `Production`, автоперезапуск контейнеров):
+```bash
+cp .env.example .env   # задай DEEPSEEK_API_KEY
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+- UI: http://localhost:8080/
+- Swagger: http://localhost:8080/swagger
+- Health: http://localhost:8080/health
+
+Данные Postgres и uploads сохраняются в Docker volumes (`pgdata`, `uploads`). `docker compose down` volumes **не удаляет**; `down -v` — удалит.
 
 ## Структура
 
@@ -63,7 +82,7 @@ tests/
 - [x] Фаза 2 — RAG: эмбеддинги, векторный поиск, чат с цитатами
 - [x] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт, goal-mode)
 - [x] Фаза 4 — evals, метрики точности/стоимости/latency
-- [ ] Фаза 5 — frontend (Blazor) и деплой
+- [x] Фаза 5 — frontend (Blazor) и деплой
 - [ ] Фаза 6 — MCP-сервер
 
 ## Метрики
