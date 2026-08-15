@@ -37,7 +37,7 @@ API-ключ DeepSeek (в git не попадает):
 
 **RAG-чат:** `POST /api/chat/sessions` — новая сессия; `POST /api/chat/sessions/{id}/messages` — вопрос (JSON: `{ "question": "...", "documentId": null }`); в ответе — текст ассистента и массив **citations** (какие документы/фрагменты использованы). `GET /api/chat/sessions/{id}` — история диалога. **UI:** `/chat` и `/chat/{sessionId}` — Blazor-страница с цитатами и фильтром по документу. Перед чатом документ должен быть загружен и проиндексирован (нужна Ollama с `bge-m3`).
 
-**Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — явный tool (`reconcile` / `summarize` / `generate_report` + `documentIds`); `POST /api/agent/goals` — `{ "goal": "сверь счета...", "documentIds": [...] }` (LLM выбирает tool); `GET /api/agent/tasks/{id}` — результат; `GET /api/agent/tasks/{id}/report` — xlsx после `generate_report`.
+**Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — явный tool (`reconcile` / `summarize` / `generate_report` + `documentIds`); `POST /api/agent/goals` — `{ "goal": "сверь счета...", "documentIds": [...] }` (LLM выбирает tool); `GET /api/agent/tasks/{id}` — результат; `GET /api/agent/tasks/{id}/report` — xlsx после `generate_report`. **UI:** `/agent` — выбор документов, явный tool или goal-mode, скачивание отчёта.
 
 **Метрики (Фаза 4):** `GET /api/metrics/summary` — LLM-токены, latency, оценка стоимости, счётчики БД, eval-кейсы; `GET /api/metrics/evals` — только evals.
 

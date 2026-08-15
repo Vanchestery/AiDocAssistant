@@ -245,3 +245,11 @@
 **Варианты:** вызывать `RagChatService` из компонента · **REST через `ChatApiClient`** · WASM + отдельный BFF.
 
 **Выбрали:** `ChatApiClient` → `POST/GET api/chat/sessions*`. Маршрут `/chat/{sessionId}` — история в URL; опциональный `?documentId=` для фильтра retrieval и deep link «Спросить по документу» со страницы деталей. После ответа — перезагрузка сессии, цитаты из API.
+
+### 30. Agent UI: явный tool + goal-mode на одной странице
+
+**Развилка:** как дать UI для трёх tools и goal-router.
+
+**Варианты:** три отдельные страницы · wizard · **одна `/agent` с переключателем режима**.
+
+**Выбрали:** `/agent` — чекбоксы документов (Extracted), radio «явный tool / goal»; `AgentApiClient` → `api/agent/tasks|goals`. Результат: status, JSON, ссылка на xlsx для `generate_report`. Ollama не нужна — только DeepSeek.

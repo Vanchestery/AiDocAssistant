@@ -1,0 +1,245 @@
+@page "/agent"
+@inject AgentApiClient AgentApi
+@inject DocumentsApiClient DocumentsApi
+@rendermode InteractiveServer
+
+<PageTitle>Агент — AiDocAssistant</PageTitle>
+
+<h1>ИИ-агент</h1>
+<p class="muted">Сверка, сводка и Excel-отчёт — явный tool или goal-mode (LLM выбирает tool).</p>
+
+<section class="card">
+    <div class="mode-switch">
+        <label class="mode-option">
+            <input type="radio" name="agent-mode" checked="@(_goalMode == false)" @onchange="() => SetMode(false)" />
+            Явный tool
+        </label>
+        <label class="mode-option">
+            <input type="radio" name="agent-mode" checked="@_goalMode" @onchange="() => SetMode(true)" />
+            Goal-mode
+        </label>
+    </div>
+
+    @if (!_goalMode)
+    {
+        <label class="field-label" for="agent-tool">Tool</label>
+        <select id="agent-tool" class="select-input" @bind="_selectedTool">
+            @foreach (var tool in _tools)
+            {
+                <option value="@tool">@ToolLabel(tool)</option>
+            }
+        </select>
+    }
+    else
+    {
+        <label class="field-label" for="agent-goal">Цель</label>
+        <textarea id="agent-goal" class="chat-input" rows="3" @bind="_goal"
+                  placeholder="Например: сверь эти счета и покажи расхождения"></textarea>
+    }
+</section>
+
+<section class="card">
+    <h2>Документы</h2>
+    @if (_loadingDocs)
+    {
+        <p class="muted">Загрузка…</p>
+    }
+    else if (_documents.Count == 0)
+    {
+        <p class="muted">Нет документов со статусом Extracted — сначала загрузите PDF.</p>
+    }
+    else
+    {
+        <div class="doc-checklist">
+            @foreach (var doc in _documents)
+            {
+                <label class="doc-check">
+                    <input type="checkbox"
+                           checked="@_selectedIds.Contains(doc.Id)"
+                           @onchange="e => ToggleDocument(doc.Id, (bool)e.Value!)" />
+                    <span>@doc.FileName</span>
+                    <span class="muted">@doc.CreatedAt.ToLocalTime().ToString("g")</span>
+                </label>
+            }
+        </div>
+        <p class="muted">Выбрано: @_selectedIds.Count · reconcile нужно минимум 2 документа.</p>
+    }
+</section>
+
+<section class="card">
+    <button class="btn btn-primary card-btn" type="button" disabled="@_running" @onclick="RunAsync">
+        @(_running ? "Выполняем…" : "Запустить")
+    </button>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="status error">@_error</p>
+    }
+</section>
+
+@if (_goalResult is not null)
+{
+    <section class="card">
+        <h2>Goal-mode</h2>
+        <p class="muted">
+            Выбран tool: <strong>@ToolLabel(_goalResult.SelectedTool)</strong> ·
+            @_goalResult.RoutingModel ·
+            @_goalResult.RoutingReason
+        </p>
+    </section>
+}
+
+@if (_taskResult is not null)
+{
+    <section class="card">
+        <div class="page-header">
+            <h2>Результат</h2>
+            <span class="badge @StatusClass(_taskResult.Status)">@_taskResult.Status</span>
+        </div>
+        <p class="muted">
+            Task @(_taskResult.Id) · tool: @ToolLabel(_taskResult.Tool) ·
+            @_taskResult.CreatedAt.ToLocalTime().ToString("G")
+        </p>
+
+        @if (!string.IsNullOrEmpty(_taskResult.Error))
+        {
+            <p class="status error">@_taskResult.Error</p>
+        }
+
+        @if (_taskResult.Tool == "generate_report"
+             && _taskResult.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+        {
+            <a class="btn btn-primary card-btn" href="@AgentApi.GetReportUrl(_taskResult.Id)" target="_blank" rel="noopener">
+                Скачать Excel
+            </a>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_taskResult.ResultJson))
+        {
+            <h3>Result JSON</h3>
+            <pre class="json-block">@FormatJson(_taskResult.ResultJson)</pre>
+        }
+    </section>
+}
+
+@code {
+    private readonly List<DocumentListItemDto> _documents = [];
+    private readonly HashSet<Guid> _selectedIds = [];
+    private IReadOnlyList<string> _tools = [];
+    private string _selectedTool = "reconcile";
+    private string _goal = string.Empty;
+    private bool _goalMode;
+    private bool _loadingDocs = true;
+    private bool _running;
+    private string? _error;
+    private AgentTaskDto? _taskResult;
+    private AgentGoalDto? _goalResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tools = await AgentApi.GetToolsAsync();
+        if (_tools.Count > 0)
+            _selectedTool = _tools[0];
+
+        await ReloadDocumentsAsync();
+    }
+
+    private async Task ReloadDocumentsAsync()
+    {
+        _loadingDocs = true;
+        try
+        {
+            var items = await DocumentsApi.GetAllAsync();
+            _documents.Clear();
+            _documents.AddRange(items.Where(d =>
+                d.Status.Equals("Extracted", StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            _loadingDocs = false;
+        }
+    }
+
+    private void SetMode(bool goalMode) => _goalMode = goalMode;
+
+    private void ToggleDocument(Guid id, bool selected)
+    {
+        if (selected)
+            _selectedIds.Add(id);
+        else
+            _selectedIds.Remove(id);
+    }
+
+    private async Task RunAsync()
+    {
+        _error = null;
+        _taskResult = null;
+        _goalResult = null;
+
+        if (_selectedIds.Count == 0)
+        {
+            _error = "Выберите хотя бы один документ.";
+            return;
+        }
+
+        var ids = _selectedIds.ToList();
+        _running = true;
+
+        try
+        {
+            if (_goalMode)
+            {
+                if (string.IsNullOrWhiteSpace(_goal))
+                {
+                    _error = "Укажите цель для goal-mode.";
+                    return;
+                }
+
+                var (goal, task) = await AgentApi.RunGoalAsync(_goal.Trim(), ids);
+                _goalResult = goal;
+                _taskResult = task;
+            }
+            else
+            {
+                _taskResult = await AgentApi.RunTaskAsync(_selectedTool, ids);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+
+    private static string ToolLabel(string tool) => tool switch
+    {
+        "reconcile" => "reconcile — сверка",
+        "summarize" => "summarize — сводка",
+        "generate_report" => "generate_report — Excel",
+        _ => tool
+    };
+
+    private static string StatusClass(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "success",
+        "failed" => "danger",
+        _ => "warning"
+    };
+
+    private static string FormatJson(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(
+                doc,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+}
