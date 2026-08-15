@@ -15,6 +15,7 @@ docker-compose up --build
 ```
 
 - API + Swagger: http://localhost:8080/swagger
+- **UI (Blazor):** http://localhost:8080/
 - Health-check: http://localhost:8080/health
 
 Для разработки в Visual Studio: поднять только БД (`docker-compose up db`) и запустить проект `AiDocAssistant.Web` (профиль http, порт 5080). Миграции применяются автоматически при старте.
@@ -48,7 +49,7 @@ API-ключ DeepSeek (в git не попадает):
 src/
   AiDocAssistant.Core/            — домен: сущности, интерфейсы, бизнес-логика
   AiDocAssistant.Infrastructure/  — EF Core, pgvector, LLM-клиенты, парсеры
-  AiDocAssistant.Web/             — Web API, DI, Swagger
+  AiDocAssistant.Web/             — Web API, Blazor UI, DI, Swagger
 tests/
   AiDocAssistant.Tests/           — xUnit
 ```

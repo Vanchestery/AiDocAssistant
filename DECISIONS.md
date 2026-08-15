@@ -227,3 +227,13 @@
 **Варианты:** только e2e upload · **JSON fixtures + recorded hits** · Prometheus alerts.
 
 **Выбрали:** embedded golden JSON (`expected` vs `actual`, нормализация «ООО»/«OOO»); `RagRetrievalEval` на recorded top-K hits (invoice A/B totals); `AgentGoalHeuristic` — offline baseline goal→tool для eval и регрессии router. **14** кейсов в `/api/metrics/evals`. Фаза 4 закрыта для портфолио.
+
+## Фаза 5 — Blazor UI и деплой
+
+### 28. Blazor Interactive Server в том же Web-проекте
+
+**Развилка:** как добавить UI к уже готовому REST API.
+
+**Варианты:** отдельный SPA (React) · Blazor WASM + отдельный хост · **Blazor Interactive Server в `AiDocAssistant.Web`**.
+
+**Выбрали:** один Docker-контейнер и один процесс — API + UI на `:8080`. UI ходит в REST через `HttpClient` (`DocumentsApiClient`), Swagger остаётся для отладки. Шаг 1: shell, главная, список/загрузка/детали документов. Дальше — чат, agent, metrics, деплой.

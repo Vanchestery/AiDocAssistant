@@ -6,6 +6,8 @@ using AiDocAssistant.Infrastructure.Parsing;
 using AiDocAssistant.Infrastructure.Persistence;
 using AiDocAssistant.Infrastructure.Reports;
 using AiDocAssistant.Infrastructure.Storage;
+using AiDocAssistant.Web.Components;
+using AiDocAssistant.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
 
@@ -14,6 +16,12 @@ var builder = WebApplication.CreateBuilder(args);
 // --- Сервисы ---------------------------------------------------------------
 
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<DocumentsApiClient>();
+
+// Фаза 5: Blazor UI (Interactive Server) в том же хосте, что и REST API
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 // PostgreSQL + pgvector через EF Core (UseVector регистрирует тип Vector)
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -104,11 +112,17 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 // --- Pipeline ----------------------------------------------------------------
 
+app.UseStaticFiles();
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseAntiforgery();
+
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();
 

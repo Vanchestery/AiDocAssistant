@@ -1,0 +1,136 @@
+@page "/documents"
+@inject DocumentsApiClient DocumentsApi
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Документы — AiDocAssistant</PageTitle>
+
+<h1>Документы</h1>
+
+<section class="card upload-card">
+    <h2>Загрузка</h2>
+    <p class="muted">PDF или изображение — парсинг, OCR при необходимости, extraction через LLM.</p>
+
+    <InputFile OnChange="OnFileSelected" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff" disabled="@_uploading" />
+    @if (_uploading)
+    {
+        <p class="status info">Обрабатываем документ…</p>
+    }
+    @if (!string.IsNullOrEmpty(_uploadError))
+    {
+        <p class="status error">@_uploadError</p>
+    }
+</section>
+
+@if (_loading)
+{
+    <p class="muted">Загрузка списка…</p>
+}
+else if (_documents.Count == 0)
+{
+    <p class="muted">Документов пока нет — загрузите первый файл.</p>
+}
+else
+{
+    <section class="card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Файл</th>
+                    <th>Статус</th>
+                    <th>OCR</th>
+                    <th>Размер</th>
+                    <th>Создан</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var doc in _documents)
+                {
+                    <tr class="clickable" @onclick="() => OpenDocument(doc.Id)">
+                        <td>@doc.FileName</td>
+                        <td><span class="badge @StatusClass(doc.Status)">@doc.Status</span></td>
+                        <td>@(doc.UsedOcr ? "да" : "нет")</td>
+                        <td>@FormatSize(doc.SizeBytes)</td>
+                        <td>@doc.CreatedAt.ToLocalTime().ToString("g")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private readonly List<DocumentListItemDto> _documents = [];
+    private bool _loading = true;
+    private bool _uploading;
+    private string? _uploadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _uploadError = null;
+        try
+        {
+            var items = await DocumentsApi.GetAllAsync();
+            _documents.Clear();
+            _documents.AddRange(items);
+        }
+        catch (Exception ex)
+        {
+            _uploadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file is null)
+            return;
+
+        _uploading = true;
+        _uploadError = null;
+        StateHasChanged();
+
+        try
+        {
+            var created = await DocumentsApi.UploadAsync(file);
+            Navigation.NavigateTo($"/documents/{created.Id}");
+        }
+        catch (Exception ex)
+        {
+            _uploadError = ex.Message;
+            await ReloadAsync();
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private void OpenDocument(Guid id) => Navigation.NavigateTo($"/documents/{id}");
+
+    private static string FormatSize(long bytes) =>
+        bytes switch
+        {
+            < 1024 => $"{bytes} B",
+            < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
+            _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
+        };
+
+    private static string StatusClass(string status) => status.ToLowerInvariant() switch
+    {
+        "extracted" => "success",
+        "failed" => "danger",
+        "parsed" => "warning",
+        _ => "neutral"
+    };
+}
