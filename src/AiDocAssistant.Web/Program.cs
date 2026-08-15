@@ -18,6 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<DocumentsApiClient>();
+builder.Services.AddScoped<ChatApiClient>();
 
 // Фаза 5: Blazor UI (Interactive Server) в том же хосте, что и REST API
 builder.Services.AddRazorComponents()

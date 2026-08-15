@@ -42,7 +42,10 @@ else
     @if (_document.Extraction is not null)
     {
         <section class="card">
-            <h2>Extraction JSON</h2>
+            <div class="page-header">
+                <h2>Extraction JSON</h2>
+                <a class="btn btn-secondary card-btn" href="/chat?documentId=@_document.Id">Спросить по документу</a>
+            </div>
             <p class="muted">
                 Модель: @_document.Extraction.Model ·
                 confidence: @(_document.Extraction.Confidence?.ToString("0.##") ?? "—") ·
@@ -76,9 +79,9 @@ else
     private static string FormatSize(long bytes) =>
         bytes switch
         {
-            < 1024 => $"{bytes} B",
-            < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
-            _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
+            var size when size < 1024 => $"{size} B",
+            var size when size < 1024 * 1024 => $"{size / 1024.0:0.#} KB",
+            var size => $"{size / (1024.0 * 1024.0):0.#} MB"
         };
 
     private static string StatusClass(string status) => status.ToLowerInvariant() switch

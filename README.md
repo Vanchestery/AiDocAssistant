@@ -35,7 +35,7 @@ API-ключ DeepSeek (в git не попадает):
 
 `POST /api/documents` (multipart, поле `file`) — загрузка PDF или изображения: текст извлекается (при необходимости OCR), LLM возвращает структурированные поля (номер, дата, контрагент, позиции, суммы) с confidence. `GET /api/documents` — список, `GET /api/documents/{id}` — детали с JSON извлечения.
 
-**RAG-чат:** `POST /api/chat/sessions` — новая сессия; `POST /api/chat/sessions/{id}/messages` — вопрос (JSON: `{ "question": "...", "documentId": null }`); в ответе — текст ассистента и массив **citations** (какие документы/фрагменты использованы). `GET /api/chat/sessions/{id}` — история диалога. Перед чатом документ должен быть загружен и проиндексирован (нужна Ollama с `bge-m3`).
+**RAG-чат:** `POST /api/chat/sessions` — новая сессия; `POST /api/chat/sessions/{id}/messages` — вопрос (JSON: `{ "question": "...", "documentId": null }`); в ответе — текст ассистента и массив **citations** (какие документы/фрагменты использованы). `GET /api/chat/sessions/{id}` — история диалога. **UI:** `/chat` и `/chat/{sessionId}` — Blazor-страница с цитатами и фильтром по документу. Перед чатом документ должен быть загружен и проиндексирован (нужна Ollama с `bge-m3`).
 
 **Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — явный tool (`reconcile` / `summarize` / `generate_report` + `documentIds`); `POST /api/agent/goals` — `{ "goal": "сверь счета...", "documentIds": [...] }` (LLM выбирает tool); `GET /api/agent/tasks/{id}` — результат; `GET /api/agent/tasks/{id}/report` — xlsx после `generate_report`.
 

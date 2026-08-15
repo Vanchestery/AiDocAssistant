@@ -237,3 +237,11 @@
 **Варианты:** отдельный SPA (React) · Blazor WASM + отдельный хост · **Blazor Interactive Server в `AiDocAssistant.Web`**.
 
 **Выбрали:** один Docker-контейнер и один процесс — API + UI на `:8080`. UI ходит в REST через `HttpClient` (`DocumentsApiClient`), Swagger остаётся для отладки. Шаг 1: shell, главная, список/загрузка/детали документов. Дальше — чат, agent, metrics, деплой.
+
+### 29. RAG-чат UI: сессия в URL + фильтр по документу
+
+**Развилка:** как встроить чат в Blazor без дублирования `RagChatService`.
+
+**Варианты:** вызывать `RagChatService` из компонента · **REST через `ChatApiClient`** · WASM + отдельный BFF.
+
+**Выбрали:** `ChatApiClient` → `POST/GET api/chat/sessions*`. Маршрут `/chat/{sessionId}` — история в URL; опциональный `?documentId=` для фильтра retrieval и deep link «Спросить по документу» со страницы деталей. После ответа — перезагрузка сессии, цитаты из API.

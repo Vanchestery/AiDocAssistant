@@ -121,9 +121,9 @@ else
     private static string FormatSize(long bytes) =>
         bytes switch
         {
-            < 1024 => $"{bytes} B",
-            < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
-            _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
+            var size when size < 1024 => $"{size} B",
+            var size when size < 1024 * 1024 => $"{size / 1024.0:0.#} KB",
+            var size => $"{size / (1024.0 * 1024.0):0.#} MB"
         };
 
     private static string StatusClass(string status) => status.ToLowerInvariant() switch
