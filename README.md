@@ -38,6 +38,8 @@ API-ключ DeepSeek (в git не попадает):
 
 **Агент (Фаза 3):** `GET /api/agent/tools` — список tools; `POST /api/agent/tasks` — явный tool (`reconcile` / `summarize` / `generate_report` + `documentIds`); `POST /api/agent/goals` — `{ "goal": "сверь счета...", "documentIds": [...] }` (LLM выбирает tool); `GET /api/agent/tasks/{id}` — результат; `GET /api/agent/tasks/{id}/report` — xlsx после `generate_report`.
 
+**Метрики (Фаза 4):** `GET /api/metrics/summary` — LLM-токены, latency, оценка стоимости, счётчики БД, eval-кейсы; `GET /api/metrics/evals` — только evals.
+
 Всё видно в Swagger.
 
 ## Структура
@@ -59,10 +61,10 @@ tests/
 - [x] Фаза 1 — загрузка документов (PDF/сканы, OCR) и structured extraction через LLM
 - [x] Фаза 2 — RAG: эмбеддинги, векторный поиск, чат с цитатами
 - [x] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт, goal-mode)
-- [ ] Фаза 4 — evals, метрики точности/стоимости/latency
+- [x] Фаза 4 — evals, метрики точности/стоимости/latency
 - [ ] Фаза 5 — frontend (Blazor) и деплой
 - [ ] Фаза 6 — MCP-сервер
 
 ## Метрики
 
-Появятся в Фазе 4: точность извлечения/ответов, стоимость запроса, latency, покрытие тестами.
+`GET /api/metrics/summary` — агрегаты LLM-вызовов (токены, latency, оценка USD), счётчики документов/чатов/agent tasks, eval-кейсы. `GET /api/metrics/evals` — детерминированные evals (reconcile + поля extraction). Тарифы токенов — `LlmPricing` в appsettings.

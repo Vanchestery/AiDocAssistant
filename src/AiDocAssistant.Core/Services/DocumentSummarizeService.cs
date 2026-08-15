@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Llm;
 
 namespace AiDocAssistant.Core.Services;
 
@@ -37,7 +38,8 @@ public sealed class DocumentSummarizeService
                 LlmMessage.User(userPrompt)
             ],
             JsonMode: false,
-            Temperature: 0.2),
+            Temperature: 0.2,
+            Operation: LlmOperations.Summarize),
             ct);
 
         return new SummarizeOutcome(

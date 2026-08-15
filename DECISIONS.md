@@ -193,3 +193,37 @@
 **Почему не native tool-calling сразу:** `ILlmProvider` уже покрывает chat + JSON-mode; для трёх tools достаточно одного вызова-маршрутизатора; проще тестировать (FakeLlm с JSON). Native tools — при multi-step цикле (несколько tools подряд).
 
 **Выбрали:** `POST /api/agent/goals` `{ goal, documentIds }` → `AgentGoalRouterService` → `AgentTaskService.RunAsync`. В `inputJson` задачи сохраняются `goal` и `routingReason`. Явный `POST /api/agent/tasks` остаётся для тестов и отладки.
+
+## Фаза 4 — evals и метрики
+
+### 24. Телеметрия LLM: декоратор + Postgres, не только логи
+
+**Развилка:** где хранить токены/latency/стоимость.
+
+**Варианты:** только `ILogger` · Prometheus/OpenTelemetry · **таблица `LlmUsageEvents` + API**.
+
+**Выбрали:** `MeteringLlmProvider` — декоратор вокруг `DeepSeekLlmProvider`; каждый вызов с `LlmRequest.Operation` (`extraction`, `rag_chat`, `summarize`, `goal_router`). Стоимость — `LlmCostEstimator` по конфигурируемым USD/1M tokens. `GET /api/metrics/summary` — агрегаты + счётчики БД.
+
+### 25. Evals v1: детерминированные кейсы без LLM в CI
+
+**Развилка:** с чего начать evals при отсутствии golden LLM-run в CI.
+
+**Варианты:** end-to-end с live LLM · offline golden JSON · **детерминированная логика + fixture JSON**.
+
+**Выбрали:** `EvalSuiteService` — reconcile (match/mismatch) + проверка ключевых полей extraction JSON (invoice A/B). `GET /api/metrics/evals` и блок evals в summary. LLM-accuracy evals — следующий шаг (offline fixtures или recorded responses).
+
+### 26. Golden extraction eval + latency p50/p95
+
+**Развилка:** как мерить точность extraction без live LLM в CI.
+
+**Варианты:** e2e upload PDF · **expected vs actual JSON** (recorded LLM output) · human review.
+
+**Выбрали:** `ExtractionGoldenEval` — 7 полей (doc_type, number, date, total, currency, counterparty name/inn); golden-кейсы invoice A/B в `EvalSuiteService`; `goldenFieldAccuracyPercent` в ответе evals. Плюс **latency p50/p95** в `LlmUsageSummary` (общий и по operation) — следующий уровень после суммарного `totalLatencyMs`.
+
+### 27. Evals v2: recorded fixtures, RAG retrieval, agent heuristic
+
+**Развилка:** как расширить evals без live LLM в API.
+
+**Варианты:** только e2e upload · **JSON fixtures + recorded hits** · Prometheus alerts.
+
+**Выбрали:** embedded golden JSON (`expected` vs `actual`, нормализация «ООО»/«OOO»); `RagRetrievalEval` на recorded top-K hits (invoice A/B totals); `AgentGoalHeuristic` — offline baseline goal→tool для eval и регрессии router. **14** кейсов в `/api/metrics/evals`. Фаза 4 закрыта для портфолио.

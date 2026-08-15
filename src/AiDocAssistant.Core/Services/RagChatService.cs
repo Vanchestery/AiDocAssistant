@@ -1,5 +1,6 @@
 using System.Text;
 using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Llm;
 using AiDocAssistant.Core.Entities;
 
 namespace AiDocAssistant.Core.Services;
@@ -85,7 +86,7 @@ public sealed class RagChatService
         messages.Add(LlmMessage.User(BuildUserPrompt(trimmedQuestion, hits)));
 
         var completion = await _llm.CompleteAsync(
-            new LlmRequest(messages, JsonMode: false, Temperature: 0.2), ct);
+            new LlmRequest(messages, JsonMode: false, Temperature: 0.2, Operation: LlmOperations.RagChat), ct);
 
         var citations = hits
             .Select(h => new ChatCitation(

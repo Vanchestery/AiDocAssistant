@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using AiDocAssistant.Core.Abstractions;
+using AiDocAssistant.Core.Llm;
 using AiDocAssistant.Core.Agent;
 
 namespace AiDocAssistant.Core.Services;
@@ -55,7 +56,8 @@ public sealed class AgentGoalRouterService
                 LlmMessage.User(userPrompt)
             ],
             JsonMode: true,
-            Temperature: 0.0),
+            Temperature: 0.0,
+            Operation: LlmOperations.GoalRouter),
             ct);
 
         var routing = ParseRouting(completion.Content);
