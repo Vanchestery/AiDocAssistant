@@ -12,6 +12,7 @@ public class EvalSuiteServiceTests
         var result = service.RunAll();
 
         Assert.True(result.AllPassed, string.Join("; ", result.Cases.Where(c => !c.Passed).Select(c => c.Name)));
-        Assert.Equal(4, result.Cases.Count);
+        Assert.Equal(6, result.Cases.Count);
+        Assert.Equal(100.0, result.GoldenFieldAccuracyPercent);
     }
 }

@@ -22,15 +22,23 @@ public sealed class EfLlmUsageStore : ILlmUsageStore
     {
         var rows = await _db.LlmUsageEvents.AsNoTracking().ToListAsync(ct);
 
+        var latencies = rows.Select(r => r.LatencyMs).ToList();
+
         var byOperation = rows
             .GroupBy(r => r.Operation)
-            .Select(g => new LlmUsageByOperation(
-                g.Key,
-                g.Count(),
-                g.Sum(x => x.PromptTokens),
-                g.Sum(x => x.CompletionTokens),
-                g.Sum(x => x.LatencyMs),
-                g.Sum(x => x.EstimatedCostUsd)))
+            .Select(g =>
+            {
+                var opLatencies = g.Select(x => x.LatencyMs).ToList();
+                return new LlmUsageByOperation(
+                    g.Key,
+                    g.Count(),
+                    g.Sum(x => x.PromptTokens),
+                    g.Sum(x => x.CompletionTokens),
+                    g.Sum(x => x.LatencyMs),
+                    LatencyStats.Percentile(opLatencies, 50),
+                    LatencyStats.Percentile(opLatencies, 95),
+                    g.Sum(x => x.EstimatedCostUsd));
+            })
             .OrderBy(x => x.Operation)
             .ToList();
 
@@ -39,6 +47,8 @@ public sealed class EfLlmUsageStore : ILlmUsageStore
             rows.Sum(r => r.PromptTokens),
             rows.Sum(r => r.CompletionTokens),
             rows.Sum(r => r.LatencyMs),
+            LatencyStats.Percentile(latencies, 50),
+            LatencyStats.Percentile(latencies, 95),
             rows.Sum(r => r.EstimatedCostUsd),
             byOperation);
     }

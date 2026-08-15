@@ -20,7 +20,21 @@ public sealed class EvalSuiteService
         var cases = new List<EvalCaseResult>();
         cases.AddRange(RunReconcileEvals());
         cases.AddRange(RunExtractionFieldEvals());
-        return new EvalSuiteResult(cases, cases.All(c => c.Passed));
+
+        var goldenMatched = 0;
+        var goldenCompared = 0;
+        foreach (var golden in RunGoldenExtractionEvals())
+        {
+            cases.Add(golden.Case);
+            goldenMatched += golden.MatchedFields;
+            goldenCompared += golden.ComparedFields;
+        }
+
+        var accuracy = goldenCompared == 0
+            ? (double?)null
+            : Math.Round(goldenMatched * 100.0 / goldenCompared, 1);
+
+        return new EvalSuiteResult(cases, cases.All(c => c.Passed), accuracy);
     }
 
     private IEnumerable<EvalCaseResult> RunReconcileEvals()
@@ -98,6 +112,34 @@ public sealed class EvalSuiteService
         return new EvalCaseResult(name, passed, detail);
     }
 
+    private static IEnumerable<GoldenEvalOutcome> RunGoldenExtractionEvals()
+    {
+        yield return ExtractionGoldenEval.Compare(
+            "extraction.golden.invoice_a",
+            GoldenJson(total: 112700m),
+            GoldenJson(total: 112700m));
+
+        yield return ExtractionGoldenEval.Compare(
+            "extraction.golden.invoice_b",
+            GoldenJson(total: 115000m),
+            GoldenJson(total: 115000m));
+    }
+
+    private static string GoldenJson(decimal total) =>
+        $$"""
+          {
+            "doc_type": "счет",
+            "number": "2026-041",
+            "date": "2026-07-15",
+            "counterparty": { "name": "OOO KofePoint", "inn": "7707654321" },
+            "items": [ { "name": "товар", "quantity": 1, "amount": {{total.ToString(CultureInfo.InvariantCulture)}} } ],
+            "total_amount": {{total.ToString(CultureInfo.InvariantCulture)}},
+            "vat_amount": 18783.33,
+            "currency": "RUB",
+            "confidence": 0.92
+          }
+          """;
+
     private static string SampleJson(decimal total) =>
         $$"""
           {
@@ -118,4 +160,5 @@ public sealed record EvalCaseResult(string Name, bool Passed, string? Detail);
 
 public sealed record EvalSuiteResult(
     IReadOnlyList<EvalCaseResult> Cases,
-    bool AllPassed);
+    bool AllPassed,
+    double? GoldenFieldAccuracyPercent = null);

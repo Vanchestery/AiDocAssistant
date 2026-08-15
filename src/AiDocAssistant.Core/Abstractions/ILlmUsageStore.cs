@@ -13,6 +13,8 @@ public sealed record LlmUsageSummary(
     int TotalPromptTokens,
     int TotalCompletionTokens,
     long TotalLatencyMs,
+    long LatencyP50Ms,
+    long LatencyP95Ms,
     decimal TotalEstimatedCostUsd,
     IReadOnlyList<LlmUsageByOperation> ByOperation);
 
@@ -22,4 +24,6 @@ public sealed record LlmUsageByOperation(
     int PromptTokens,
     int CompletionTokens,
     long LatencyMs,
+    long LatencyP50Ms,
+    long LatencyP95Ms,
     decimal EstimatedCostUsd);

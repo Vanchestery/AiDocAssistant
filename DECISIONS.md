@@ -211,3 +211,11 @@
 **Варианты:** end-to-end с live LLM · offline golden JSON · **детерминированная логика + fixture JSON**.
 
 **Выбрали:** `EvalSuiteService` — reconcile (match/mismatch) + проверка ключевых полей extraction JSON (invoice A/B). `GET /api/metrics/evals` и блок evals в summary. LLM-accuracy evals — следующий шаг (offline fixtures или recorded responses).
+
+### 26. Golden extraction eval + latency p50/p95
+
+**Развилка:** как мерить точность extraction без live LLM в CI.
+
+**Варианты:** e2e upload PDF · **expected vs actual JSON** (recorded LLM output) · human review.
+
+**Выбрали:** `ExtractionGoldenEval` — 7 полей (doc_type, number, date, total, currency, counterparty name/inn); golden-кейсы invoice A/B в `EvalSuiteService`; `goldenFieldAccuracyPercent` в ответе evals. Плюс **latency p50/p95** в `LlmUsageSummary` (общий и по operation) — следующий уровень после суммарного `totalLatencyMs`.

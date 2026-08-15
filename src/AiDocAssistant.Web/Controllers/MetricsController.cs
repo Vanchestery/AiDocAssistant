@@ -46,6 +46,8 @@ public record LlmUsageSummaryDto(
     int TotalPromptTokens,
     int TotalCompletionTokens,
     long TotalLatencyMs,
+    long LatencyP50Ms,
+    long LatencyP95Ms,
     decimal TotalEstimatedCostUsd,
     IReadOnlyList<LlmUsageByOperationDto> ByOperation)
 {
@@ -55,6 +57,8 @@ public record LlmUsageSummaryDto(
             summary.TotalPromptTokens,
             summary.TotalCompletionTokens,
             summary.TotalLatencyMs,
+            summary.LatencyP50Ms,
+            summary.LatencyP95Ms,
             summary.TotalEstimatedCostUsd,
             summary.ByOperation.Select(LlmUsageByOperationDto.FromModel).ToList());
 }
@@ -65,10 +69,13 @@ public record LlmUsageByOperationDto(
     int PromptTokens,
     int CompletionTokens,
     long LatencyMs,
+    long LatencyP50Ms,
+    long LatencyP95Ms,
     decimal EstimatedCostUsd)
 {
     public static LlmUsageByOperationDto FromModel(LlmUsageByOperation row) =>
-        new(row.Operation, row.Calls, row.PromptTokens, row.CompletionTokens, row.LatencyMs, row.EstimatedCostUsd);
+        new(row.Operation, row.Calls, row.PromptTokens, row.CompletionTokens, row.LatencyMs,
+            row.LatencyP50Ms, row.LatencyP95Ms, row.EstimatedCostUsd);
 }
 
 public record DataCountsDto(
@@ -82,10 +89,10 @@ public record DataCountsDto(
         new(counts.Documents, counts.ExtractedDocuments, counts.ChatSessions, counts.AgentTasks, counts.LlmUsageEvents);
 }
 
-public record EvalSuiteDto(bool AllPassed, IReadOnlyList<EvalCaseDto> Cases)
+public record EvalSuiteDto(bool AllPassed, double? GoldenFieldAccuracyPercent, IReadOnlyList<EvalCaseDto> Cases)
 {
     public static EvalSuiteDto FromModel(EvalSuiteResult result) =>
-        new(result.AllPassed, result.Cases.Select(EvalCaseDto.FromModel).ToList());
+        new(result.AllPassed, result.GoldenFieldAccuracyPercent, result.Cases.Select(EvalCaseDto.FromModel).ToList());
 }
 
 public record EvalCaseDto(string Name, bool Passed, string? Detail)
