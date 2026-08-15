@@ -61,7 +61,7 @@ tests/
 - [x] Фаза 1 — загрузка документов (PDF/сканы, OCR) и structured extraction через LLM
 - [x] Фаза 2 — RAG: эмбеддинги, векторный поиск, чат с цитатами
 - [x] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт, goal-mode)
-- [ ] Фаза 4 — evals, метрики точности/стоимости/latency *(в работе: LLM telemetry + eval API)*
+- [x] Фаза 4 — evals, метрики точности/стоимости/latency
 - [ ] Фаза 5 — frontend (Blazor) и деплой
 - [ ] Фаза 6 — MCP-сервер
 

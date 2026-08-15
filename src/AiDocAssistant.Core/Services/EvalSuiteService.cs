@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
+using AiDocAssistant.Core.Agent;
+using AiDocAssistant.Core.Evals;
 
 namespace AiDocAssistant.Core.Services;
 
@@ -29,6 +31,9 @@ public sealed class EvalSuiteService
             goldenMatched += golden.MatchedFields;
             goldenCompared += golden.ComparedFields;
         }
+
+        cases.AddRange(RagRetrievalEval.RunRecordedScenarios());
+        cases.AddRange(RunAgentHeuristicEvals());
 
         var accuracy = goldenCompared == 0
             ? (double?)null
@@ -123,6 +128,36 @@ public sealed class EvalSuiteService
             "extraction.golden.invoice_b",
             GoldenJson(total: 115000m),
             GoldenJson(total: 115000m));
+
+        yield return ExtractionGoldenEval.Compare(
+            "extraction.golden.invoice_a_recorded",
+            GoldenFixtures.Load("invoice-a.expected.json"),
+            GoldenFixtures.Load("invoice-a.actual.json"));
+
+        yield return ExtractionGoldenEval.Compare(
+            "extraction.golden.invoice_b_recorded",
+            GoldenFixtures.Load("invoice-b.expected.json"),
+            GoldenFixtures.Load("invoice-b.actual.json"));
+    }
+
+    private static IEnumerable<EvalCaseResult> RunAgentHeuristicEvals()
+    {
+        yield return HeuristicCase("agent.heuristic.reconcile", "Сверь счета и расхождения", 2, AgentToolNames.Reconcile);
+        yield return HeuristicCase("agent.heuristic.summarize", "Сделай сводку по документам", 1, AgentToolNames.Summarize);
+        yield return HeuristicCase("agent.heuristic.report", "Сформируй отчёт в Excel", 1, AgentToolNames.GenerateReport);
+        yield return HeuristicCase("agent.heuristic.reconcile_needs_two", "Сверь счета", 1, expectedTool: null);
+    }
+
+    private static EvalCaseResult HeuristicCase(
+        string name,
+        string goal,
+        int documentCount,
+        string? expectedTool)
+    {
+        var actual = AgentGoalHeuristic.ResolveTool(goal, documentCount);
+        var passed = actual == expectedTool;
+        var detail = passed ? null : $"expected={expectedTool ?? "null"}, actual={actual ?? "null"}";
+        return new EvalCaseResult(name, passed, detail);
     }
 
     private static string GoldenJson(decimal total) =>

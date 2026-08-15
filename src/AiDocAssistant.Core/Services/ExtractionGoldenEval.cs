@@ -33,7 +33,7 @@ public static class ExtractionGoldenEval
                 continue;
 
             compared++;
-            if (ValuesEqual(expected, actual))
+            if (FieldsEqual(field, expected, actual))
                 continue;
 
             mismatches.Add($"{field}: expected={expected ?? "null"}, actual={actual ?? "null"}");
@@ -85,6 +85,35 @@ public static class ExtractionGoldenEval
         return el.ValueKind == JsonValueKind.Number
             ? el.GetDecimal().ToString(CultureInfo.InvariantCulture)
             : el.ToString();
+    }
+
+    private static bool FieldsEqual(string field, string? expected, string? actual) =>
+        field switch
+        {
+            "counterparty.name" => CounterpartyNamesEqual(expected, actual),
+            _ => ValuesEqual(expected, actual)
+        };
+
+    /// <summary>LLM часто путает латинскую O и кириллическую О в «ООО».</summary>
+    private static bool CounterpartyNamesEqual(string? expected, string? actual)
+    {
+        var normExpected = NormalizeCounterpartyName(expected);
+        var normActual = NormalizeCounterpartyName(actual);
+        return string.Equals(normExpected, normActual, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? NormalizeCounterpartyName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        return name
+            .Replace('О', 'O')
+            .Replace('о', 'o')
+            .Replace("«", "", StringComparison.Ordinal)
+            .Replace("»", "", StringComparison.Ordinal)
+            .Replace("\"", "", StringComparison.Ordinal)
+            .Trim();
     }
 
     private static bool ValuesEqual(string? expected, string? actual)

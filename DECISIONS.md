@@ -219,3 +219,11 @@
 **Варианты:** e2e upload PDF · **expected vs actual JSON** (recorded LLM output) · human review.
 
 **Выбрали:** `ExtractionGoldenEval` — 7 полей (doc_type, number, date, total, currency, counterparty name/inn); golden-кейсы invoice A/B в `EvalSuiteService`; `goldenFieldAccuracyPercent` в ответе evals. Плюс **latency p50/p95** в `LlmUsageSummary` (общий и по operation) — следующий уровень после суммарного `totalLatencyMs`.
+
+### 27. Evals v2: recorded fixtures, RAG retrieval, agent heuristic
+
+**Развилка:** как расширить evals без live LLM в API.
+
+**Варианты:** только e2e upload · **JSON fixtures + recorded hits** · Prometheus alerts.
+
+**Выбрали:** embedded golden JSON (`expected` vs `actual`, нормализация «ООО»/«OOO»); `RagRetrievalEval` на recorded top-K hits (invoice A/B totals); `AgentGoalHeuristic` — offline baseline goal→tool для eval и регрессии router. **14** кейсов в `/api/metrics/evals`. Фаза 4 закрыта для портфолио.
