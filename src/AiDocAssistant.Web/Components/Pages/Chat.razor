@@ -1,0 +1,219 @@
+@page "/chat"
+@page "/chat/{SessionId:guid}"
+@inject ChatApiClient ChatApi
+@inject DocumentsApiClient DocumentsApi
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Чат — AiDocAssistant</PageTitle>
+
+@if (_bootstrapping)
+{
+    <p class="muted">Создаём сессию…</p>
+}
+else if (_session is null)
+{
+    <p class="status error">Сессия не найдена.</p>
+    <a class="btn btn-secondary card-btn" href="/chat">Новый чат</a>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1>RAG-чат</h1>
+            <p class="muted">Вопросы по проиндексированным документам с цитатами.</p>
+        </div>
+        <button class="btn btn-secondary card-btn" type="button" @onclick="StartNewChat">Новый чат</button>
+    </div>
+
+    <section class="card chat-toolbar">
+        <label class="field-label" for="document-filter">Ограничить поиск документом</label>
+        <select id="document-filter" class="select-input" @bind="_selectedDocumentId">
+            <option value="">Все документы</option>
+            @foreach (var doc in _documents)
+            {
+                <option value="@doc.Id">@doc.FileName</option>
+            }
+        </select>
+        @if (_documents.Count == 0)
+        {
+            <p class="muted">Сначала загрузите документы — без индекса чат не ответит.</p>
+        }
+    </section>
+
+    <section class="card chat-panel">
+        <div class="chat-messages">
+            @if (_session.Messages.Count == 0)
+            {
+                <p class="muted chat-empty">Задайте вопрос, например: «Какая итоговая сумма по счёту?»</p>
+            }
+
+            @foreach (var message in _session.Messages)
+            {
+                <article class="chat-message @RoleClass(message.Role)">
+                    <div class="chat-role">@RoleLabel(message.Role)</div>
+                    <div class="chat-content">@message.Content</div>
+                    @if (message.Citations is { Count: > 0 })
+                    {
+                        <div class="citations">
+                            <div class="citations-title">Цитаты</div>
+                            @foreach (var citation in message.Citations)
+                            {
+                                <div class="citation-item">
+                                    <div class="citation-meta">
+                                        <a href="/documents/@citation.DocumentId">@citation.DocumentFileName</a>
+                                        · фрагмент #@citation.ChunkOrdinal
+                                        · dist @citation.Distance.ToString("0.###")
+                                    </div>
+                                    <div class="citation-excerpt">@citation.Excerpt</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
+                         && message.Model is not null)
+                    {
+                        <div class="chat-meta muted">
+                            @message.Model · tokens @((message.PromptTokens ?? 0) + (message.CompletionTokens ?? 0))
+                        </div>
+                    }
+                </article>
+            }
+
+            @if (_asking)
+            {
+                <article class="chat-message assistant pending">
+                    <div class="chat-role">Ассистент</div>
+                    <div class="chat-content muted">Думаю…</div>
+                </article>
+            }
+        </div>
+
+        <EditForm Model="_form" OnValidSubmit="SendQuestionAsync" class="chat-form">
+            <textarea class="chat-input"
+                      @bind="_form.Question"
+                      placeholder="Ваш вопрос…"
+                      rows="3"
+                      disabled="@_asking"></textarea>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <p class="status error">@_error</p>
+            }
+            <button class="btn btn-primary card-btn" type="submit" disabled="@(_asking || string.IsNullOrWhiteSpace(_form.Question))">
+                Отправить
+            </button>
+        </EditForm>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid? SessionId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "documentId")]
+    public Guid? DocumentId { get; set; }
+
+    private ChatSessionDto? _session;
+    private readonly List<DocumentListItemDto> _documents = [];
+    private bool _bootstrapping = true;
+    private bool _asking;
+    private string? _error;
+    private string? _selectedDocumentId;
+    private readonly QuestionForm _form = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _bootstrapping = true;
+        _error = null;
+
+        try
+        {
+            if (SessionId is null)
+            {
+                var created = await ChatApi.CreateSessionAsync();
+                var url = $"/chat/{created.Id}";
+                if (DocumentId is not null)
+                    url += $"?documentId={DocumentId}";
+
+                Navigation.NavigateTo(url, replace: true);
+                return;
+            }
+
+            _selectedDocumentId = DocumentId?.ToString();
+            await LoadDocumentsAsync();
+            await LoadSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _bootstrapping = false;
+        }
+    }
+
+    private async Task LoadDocumentsAsync()
+    {
+        var items = await DocumentsApi.GetAllAsync();
+        _documents.Clear();
+        _documents.AddRange(items.Where(d => d.Status.Equals("Extracted", StringComparison.OrdinalIgnoreCase)));
+
+        if (DocumentId is not null && _documents.All(d => d.Id != DocumentId))
+            _selectedDocumentId = DocumentId.ToString();
+    }
+
+    private async Task LoadSessionAsync()
+    {
+        if (SessionId is null)
+            return;
+
+        _session = await ChatApi.GetSessionAsync(SessionId.Value);
+    }
+
+    private async Task SendQuestionAsync()
+    {
+        if (SessionId is null || string.IsNullOrWhiteSpace(_form.Question))
+            return;
+
+        _asking = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            Guid? documentId = Guid.TryParse(_selectedDocumentId, out var parsed) ? parsed : null;
+            await ChatApi.AskAsync(SessionId.Value, _form.Question.Trim(), documentId);
+            _form.Question = string.Empty;
+            await LoadSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _asking = false;
+        }
+    }
+
+    private void StartNewChat()
+    {
+        var url = "/chat";
+        if (Guid.TryParse(_selectedDocumentId, out var documentId))
+            url += $"?documentId={documentId}";
+
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
+
+    private static string RoleClass(string role) =>
+        role.Equals("user", StringComparison.OrdinalIgnoreCase) ? "user" : "assistant";
+
+    private static string RoleLabel(string role) =>
+        role.Equals("user", StringComparison.OrdinalIgnoreCase) ? "Вы" : "Ассистент";
+
+    private sealed class QuestionForm
+    {
+        public string Question { get; set; } = string.Empty;
+    }
+}

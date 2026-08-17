@@ -1,0 +1,35 @@
+@page "/"
+
+<PageTitle>AiDocAssistant</PageTitle>
+
+<section class="hero">
+    <h1>AI-ассистент документооборота</h1>
+    <p class="lead">
+        Загрузка PDF и сканов, извлечение полей, RAG-чат с цитатами, агентные действия и метрики LLM.
+    </p>
+    <div class="hero-actions">
+        <a class="btn btn-primary" href="/documents">Документы</a>
+        <a class="btn btn-secondary" href="/chat">RAG-чат</a>
+        <a class="btn btn-secondary" href="/agent">Агент</a>
+        <a class="btn btn-secondary" href="/swagger" target="_blank" rel="noopener">API (Swagger)</a>
+    </div>
+</section>
+
+<section class="card-grid">
+    <article class="card">
+        <h2>Extraction</h2>
+        <p>Структурированные поля счёта: номер, дата, контрагент, суммы, confidence.</p>
+    </article>
+    <article class="card">
+        <h2>RAG-чат</h2>
+        <p>Вопросы по содержимому с цитатами из проиндексированных фрагментов.</p>
+    </article>
+    <article class="card">
+        <h2>Agent</h2>
+        <p>Сверка, сводки и Excel-отчёты — явный tool или goal-mode.</p>
+    </article>
+    <article class="card">
+        <h2>Metrics</h2>
+        <p>Токены, latency p50/p95, eval-suite — через REST API.</p>
+    </article>
+</section>

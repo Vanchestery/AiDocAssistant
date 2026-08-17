@@ -227,3 +227,37 @@
 **Варианты:** только e2e upload · **JSON fixtures + recorded hits** · Prometheus alerts.
 
 **Выбрали:** embedded golden JSON (`expected` vs `actual`, нормализация «ООО»/«OOO»); `RagRetrievalEval` на recorded top-K hits (invoice A/B totals); `AgentGoalHeuristic` — offline baseline goal→tool для eval и регрессии router. **14** кейсов в `/api/metrics/evals`. Фаза 4 закрыта для портфолио.
+
+## Фаза 5 — Blazor UI и деплой
+
+### 28. Blazor Interactive Server в том же Web-проекте
+
+**Развилка:** как добавить UI к уже готовому REST API.
+
+**Варианты:** отдельный SPA (React) · Blazor WASM + отдельный хост · **Blazor Interactive Server в `AiDocAssistant.Web`**.
+
+**Выбрали:** один Docker-контейнер и один процесс — API + UI на `:8080`. UI ходит в REST через `HttpClient` (`DocumentsApiClient`), Swagger остаётся для отладки. Шаг 1: shell, главная, список/загрузка/детали документов. Дальше — чат, agent, metrics, деплой.
+
+### 29. RAG-чат UI: сессия в URL + фильтр по документу
+
+**Развилка:** как встроить чат в Blazor без дублирования `RagChatService`.
+
+**Варианты:** вызывать `RagChatService` из компонента · **REST через `ChatApiClient`** · WASM + отдельный BFF.
+
+**Выбрали:** `ChatApiClient` → `POST/GET api/chat/sessions*`. Маршрут `/chat/{sessionId}` — история в URL; опциональный `?documentId=` для фильтра retrieval и deep link «Спросить по документу» со страницы деталей. После ответа — перезагрузка сессии, цитаты из API.
+
+### 30. Agent UI: явный tool + goal-mode на одной странице
+
+**Развилка:** как дать UI для трёх tools и goal-router.
+
+**Варианты:** три отдельные страницы · wizard · **одна `/agent` с переключателем режима**.
+
+**Выбрали:** `/agent` — чекбоксы документов (Extracted), radio «явный tool / goal»; `AgentApiClient` → `api/agent/tasks|goals`. Результат: status, JSON, ссылка на xlsx для `generate_report`. Ollama не нужна — только DeepSeek.
+
+### 31. Metrics dashboard + prod compose
+
+**Развилка:** как закрыть Фазу 5 (UI + деплой).
+
+**Варианты:** отдельный Grafana · только Swagger · **Blazor `/metrics` + `docker-compose.prod.yml`**.
+
+**Выбрали:** страница `/metrics` — LLM-агрегаты, p50/p95, счётчики БД, таблица 14 eval-кейсов (`MetricsApiClient` → summary). Деплой: `.env.example` + override `docker-compose.prod.yml` (`Production`, `restart: unless-stopped`). Dev-поток (`docker compose up --build`) без изменений.
