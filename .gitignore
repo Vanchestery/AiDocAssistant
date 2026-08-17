@@ -22,6 +22,9 @@ TestResults/
 *.env
 appsettings.*.Local.json
 
+# Cursor MCP (содержит DeepSeek API key)
+.cursor/mcp.json
+
 # Локальное файловое хранилище
 uploads/
 
