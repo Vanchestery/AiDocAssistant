@@ -62,6 +62,22 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 
 Данные Postgres и uploads сохраняются в Docker volumes (`pgdata`, `uploads`). `docker compose down` volumes **не удаляет**; `down -v` — удалит.
 
+## MCP (Cursor)
+
+Отдельный **stdio**-сервер `AiDocAssistant.Mcp` — те же сервисы, что у Web API, без HTTP-обёртки.
+
+**Требования:** Postgres с данными (`docker compose up db` или полный stack), `DeepSeek:ApiKey`.
+
+```bash
+dotnet user-secrets set "DeepSeek:ApiKey" "sk-..." --project src/AiDocAssistant.Mcp
+```
+
+Скопируй [mcp.json.example](mcp.json.example) в `.cursor/mcp.json` (или добавь блок в настройки Cursor → MCP) и подставь ключ в `env`. Перезапусти Cursor.
+
+**Tools:** `list_documents`, `get_document`, `list_agent_tools`, `reconcile`, `summarize`, `generate_report`, `run_agent_goal`, `get_agent_task`, `get_metrics_summary`.
+
+Проверка в чате Cursor: «Покажи список документов через MCP» или вызов tool `list_documents`.
+
 ## Структура
 
 ```
@@ -69,6 +85,7 @@ src/
   AiDocAssistant.Core/            — домен: сущности, интерфейсы, бизнес-логика
   AiDocAssistant.Infrastructure/  — EF Core, pgvector, LLM-клиенты, парсеры
   AiDocAssistant.Web/             — Web API, Blazor UI, DI, Swagger
+  AiDocAssistant.Mcp/             — MCP stdio-сервер для Cursor (tools → те же сервисы)
 tests/
   AiDocAssistant.Tests/           — xUnit
 ```
@@ -83,7 +100,7 @@ tests/
 - [x] Фаза 3 — ИИ-агент с tool-use (сверка, сводка, отчёт, goal-mode)
 - [x] Фаза 4 — evals, метрики точности/стоимости/latency
 - [x] Фаза 5 — frontend (Blazor) и деплой
-- [ ] Фаза 6 — MCP-сервер
+- [x] Фаза 6 — MCP-сервер (stdio, `AiDocAssistant.Mcp`)
 
 ## Метрики
 

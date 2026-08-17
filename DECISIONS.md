@@ -261,3 +261,15 @@
 **Варианты:** отдельный Grafana · только Swagger · **Blazor `/metrics` + `docker-compose.prod.yml`**.
 
 **Выбрали:** страница `/metrics` — LLM-агрегаты, p50/p95, счётчики БД, таблица 14 eval-кейсов (`MetricsApiClient` → summary). Деплой: `.env.example` + override `docker-compose.prod.yml` (`Production`, `restart: unless-stopped`). Dev-поток (`docker compose up --build`) без изменений.
+
+## Фаза 6 — MCP-сервер
+
+### 32. Отдельный stdio MCP-проект на ModelContextProtocol SDK
+
+**Развилка:** как открыть AiDocAssistant для Cursor/Claude как MCP tools.
+
+**Варианты:** HTTP MCP внутри Web (`ModelContextProtocol.AspNetCore`) · **отдельный console stdio-сервер** · thin HTTP-прокси к REST.
+
+**Почему не HTTP в Web сразу:** stdio — нативный транспорт Cursor; отдельный процесс не тянет Kestrel и не смешивает MCP stdout с логами API. Общая бизнес-логика остаётся в Core/Infrastructure.
+
+**Выбрали:** `AiDocAssistant.Mcp` — `Host` + `AddMcpServer().WithStdioServerTransport().WithToolsFromAssembly()`. DI дублирует Web (без Blazor/Swagger), те же `AgentTaskService`, `MetricsService`, `AppDbContext`. Tools: `list_documents`, `get_document`, `reconcile`, `summarize`, `generate_report`, `run_agent_goal`, `get_metrics_summary`, `list_agent_tools`, `get_agent_task`. Логи — stderr (протокол на stdout). Конфиг: `appsettings.json` + env/`user-secrets` для `DeepSeek:ApiKey`. HTTP MCP на Web — опционально позже.
