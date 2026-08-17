@@ -2,6 +2,7 @@
 [Bb]in/
 [Oo]bj/
 [Oo]ut/
+tmp-publish-test/
 
 # Visual Studio
 .vs/
