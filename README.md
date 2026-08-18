@@ -27,6 +27,18 @@
 
 ---
 
+## Screenshots
+
+| Documents | Agent (reconcile) | Metrics | MCP in Cursor |
+|:---:|:---:|:---:|:---:|
+| ![Documents list](docs/screenshots/01-documents.png) | ![Agent reconcile](docs/screenshots/03-agent-reconcile.png) | ![Metrics dashboard](docs/screenshots/04-metrics.png) | ![Cursor MCP](docs/screenshots/05-mcp-cursor.png) |
+| Extraction JSON | RAG chat + citations | | |
+| ![Document extraction](docs/screenshots/02-extraction.png) | ![RAG chat](docs/screenshots/06-rag-chat.png) | | |
+
+[Shoot guide](docs/screenshots/README.md) · Social preview: upload `docs/screenshots/00-banner.png` in repo **Settings → General**.
+
+---
+
 ## Architecture
 
 ```mermaid
